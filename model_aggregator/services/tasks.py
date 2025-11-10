@@ -52,10 +52,10 @@ class BackgroundTasksManager:
                     models: List[ModelInfo] = await gather_models()
                     await self._store.update_models(models)
                 except asyncio.CancelledError as e:
-                    logging.error("CancelledError in model refresh loop: %s", e)
+                    logging.error("CancelledError in model refresh loop: %r", e)
                     break
                 except Exception as e:
-                    logging.error("Error in model refresh loop: %s", e)
+                    logging.error("Error in model refresh loop: %r", e)
                 # Wait; wake early if stopping
                 try:
                     await asyncio.wait_for(
@@ -63,7 +63,7 @@ class BackgroundTasksManager:
                         timeout=refresh_interval,
                     )
                 except asyncio.TimeoutError as e:
-                    logging.error("TimeoutError in model refresh loop: %s", e)
+                    logging.error("TimeoutError in model refresh loop: %r", e)
                     # non-blocking
                     pass
 
@@ -87,24 +87,24 @@ class BackgroundTasksManager:
                                 self._stopping.wait(), timeout=idle_sleep
                             )
                         except asyncio.TimeoutError as e:
-                            logging.error("TimeoutError 1 in enrichment loop: %s", e)
+                            logging.error("TimeoutError 1 in enrichment loop: %r", e)
                             continue
                         continue
 
                     enriched: List[EnrichedModel] = await enrich_batch(batch)
                     await self._store.apply_enrichment(enriched)
                 except asyncio.CancelledError as e:
-                    logging.error("CancelledError in enrichment loop: %s", e)
+                    logging.error("CancelledError in enrichment loop: %r", e)
                     break
                 except Exception as e:
-                    logging.error("Error in enrichment loop: %s", e)
+                    logging.error("Error in enrichment loop: %r", e)
                     # small backoff on error
                     try:
                         await asyncio.wait_for(
                             self._stopping.wait(), timeout=idle_sleep
                         )
                     except asyncio.TimeoutError as e:
-                        logging.error("TimeoutError 2 in enrichment loop: %s", e)
+                        logging.error("TimeoutError 2 in enrichment loop: %r", e)
                         continue
 
             logging.info("Background enrichment loop stopped")
@@ -127,7 +127,7 @@ class BackgroundTasksManager:
             try:
                 await t
             except asyncio.CancelledError as e:
-                logging.warn("CancelledError 2 in stop(): %s", e)
+                logging.warn("CancelledError 2 in stop(): %r", e)
                 pass
 
         self._refresh_task = None

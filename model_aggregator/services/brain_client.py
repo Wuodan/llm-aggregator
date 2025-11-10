@@ -50,6 +50,25 @@ async def enrich_batch(models: List[ModelInfo]) -> List[EnrichedModel]:
         "Only respond with a single JSON object, no markdown, no extra text."
     )
 
+    system_prompt = (
+        "You are a strict JSON generator that analyzes a list of models and returns "
+        "concise metadata.\n"
+        "Only respond with a single JSON object, no markdown, no extra text.\n\n"
+        "## LLM Model Types"
+        "For your knowledge here are LLM model types and what they mean:\n\n"
+        "| Type          | Full Name / Meaning          | Input → Output                   | Typical Use Case                          |\n"
+        "|---------------|------------------------------|----------------------------------|-------------------------------------------|\n"
+        "| llm           | Large Language Model         | Text → Text                      | Chatbots, coding assistants, reasoning    |\n"
+        "| vlm           | Vision-Language Model        | Image + Text → Text              | Visual Q&A, captioning, multimodal agents |\n"
+        "| embedder      | Embedding Model              | Text → Vector (numeric array)    | Semantic search, retrieval, RAG           |\n"
+        "| reranker      | Reranking Model              | Query + Candidates → Ranked list | Improving search or RAG results           |\n"
+        "| tts           | Text-to-Speech               | Text → Audio                     | Generate spoken output, voice synthesis   |\n"
+        "| asr           | Automatic Speech Recognition | Audio → Text                     | Transcribe recordings or live speech      |\n"
+        "| diarize       | Speaker Diarization          | Audio → Speaker segments         | Detect who spoke when in audio            |\n"
+        "| cv            | Computer Vision              | Image → Labels / Features        | Object detection, classification          |\n"
+        "| image_gen     | Image Generation             | Text → Image                     | Generative art, visual assistants         |\n"
+    )
+
     user_prompt = (
         "Given the following JSON array 'models', generate detailed metadata for each model.\n"
         "\n"

@@ -87,7 +87,7 @@ def _parse_settings(raw: dict) -> Settings:
         raise ValueError("'enrichment.port' must be set to an integer port number")
 
     use_bearer = bool(enrich_cfg.get("use_bearer_model_id", True))
-    max_batch_size = enrich_cfg.get("max_batch_size", 15)
+    max_batch_size = enrich_cfg.get("max_batch_size", 5)
     if not isinstance(max_batch_size, int) or max_batch_size <= 0:
         raise ValueError("'enrichment.max_batch_size' must be a positive integer")
 
