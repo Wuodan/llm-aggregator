@@ -87,7 +87,7 @@ async def enrich_models(models: List[Dict[str, Any]]) -> Dict[str, Any]:
         "Your entire response MUST be a single valid JSON object."
     )
 
-    models = json.dumps(minimal_models)[:1]
+    models = json.dumps(minimal_models[:15])
 
     user_prompt = (
         "Given the following JSON array 'models', generate detailed metadata for each model.\n"
