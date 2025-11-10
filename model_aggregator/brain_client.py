@@ -8,25 +8,48 @@ from .config import ENRICH_MODEL_ID, ENRICH_PORT, MARVIN_HOST, USE_BEARER_ON_ENR
 
 
 async def _post_to_brain(payload: Dict[str, Any]) -> str:
-    """Low-level helper: call the brain model and return raw content string."""
+    """Low-level helper: call the brain model and return raw content string.
+
+    On any error or timeout, returns an empty string so the caller can gracefully
+    fall back to "no enrichment" instead of killing the app.
+    """
     headers: Dict[str, str] = {}
     if USE_BEARER_ON_ENRICH_PORT:
-        # Only this port requires / cares about the Bearer; others ignore it.
         headers["Authorization"] = f"Bearer {ENRICH_MODEL_ID}"
 
-    async with httpx.AsyncClient(timeout=60.0) as client:
-        r = await client.post(
-            f"{MARVIN_HOST}:{ENRICH_PORT}/v1/chat/completions",
-            headers=headers,
-            json=payload,
-        )
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            r = await client.post(
+                f"{MARVIN_HOST}:{ENRICH_PORT}/v1/chat/completions",
+                headers=headers,
+                json=payload,
+            )
+    except httpx.TimeoutException as e:
+        logging.warning("Brain request timed out: %s", e)
+        return ""
+    except httpx.HTTPError as e:
+        logging.warning("Brain HTTP error: %s", e)
+        return ""
+    except Exception as e:
+        logging.warning("Brain unexpected error: %s", e)
+        return ""
 
     if r.status_code == 429:
         logging.warning("Brain rate-limited with 429")
         return ""
 
-    r.raise_for_status()
-    data = r.json()
+    try:
+        r.raise_for_status()
+    except httpx.HTTPError as e:
+        logging.warning("Brain non-2xx status: %s", e)
+        return ""
+
+    try:
+        data = r.json()
+    except Exception as e:
+        logging.warning("Brain invalid JSON response: %s", e)
+        return ""
+
     content = (
         data.get("choices", [{}])[0]
         .get("message", {})
@@ -40,28 +63,11 @@ async def _post_to_brain(payload: Dict[str, Any]) -> str:
 async def enrich_models(models: List[Dict[str, Any]]) -> Dict[str, Any]:
     """Call the brain ONCE to get enrichment JSON for all models.
 
-    Input: list of model dicts (must include `id` and `server_port`).
-    Output (best-effort):
-
-    {
-      "enriched": [
-        {
-          "model": "<id>",
-          "summary": "<short text>",
-          "types": ["llm", "vlm", ...],
-          "recommended_use": "<short guidance>",
-          "priority": 1-10
-        },
-        ...
-      ]
-    }
-
-    If parsing fails, returns an empty structure.
+    If anything fails, we return {"enriched": []} so the main app keeps running.
     """
     if not models:
         return {"enriched": []}
 
-    # Send only the minimal necessary context to keep prompts compact.
     minimal_models = [
         {
             "id": m.get("id"),
@@ -80,10 +86,9 @@ async def enrich_models(models: List[Dict[str, Any]]) -> Dict[str, Any]:
         "Your entire response MUST be a single valid JSON object."
     )
 
-    # Build user prompt in a compile-safe way with proper escaping.
     user_prompt = (
         "Given the following JSON array 'models', generate detailed metadata for each model.\n"
-        "Input 'models': "
+        "Input 'models': \n"
         + json.dumps(minimal_models)
         + "\n"
         "Return EXACTLY this JSON structure and nothing else:\n"
@@ -118,18 +123,14 @@ async def enrich_models(models: List[Dict[str, Any]]) -> Dict[str, Any]:
 
     raw = await _post_to_brain(payload)
     if not raw:
-        logging.warning("Brain returned empty content")
+        logging.warning("Brain returned empty content or failed; continuing without enrichment")
         return {"enriched": []}
 
-    # Try to robustly extract JSON
     text = raw.strip()
     start = text.find("{")
     end = text.rfind("}")
     if start == -1 or end == -1 or end <= start:
-        logging.warning(
-            "Brain response did not contain JSON-looking content: %.200r",
-            raw,
-        )
+        logging.warning("Brain response did not contain JSON-looking content: %.200r", raw)
         return {"enriched": []}
 
     json_str = text[start : end + 1]
@@ -144,7 +145,6 @@ async def enrich_models(models: List[Dict[str, Any]]) -> Dict[str, Any]:
         logging.warning("Brain JSON missing 'enriched' list: %.200r", obj)
         return {"enriched": []}
 
-    # Normalize entries
     norm: List[Dict[str, Any]] = []
     allowed = {
         "llm",
@@ -169,10 +169,7 @@ async def enrich_models(models: List[Dict[str, Any]]) -> Dict[str, Any]:
         types = e.get("types") or []
         if not isinstance(types, list):
             types = []
-        # keep only allowed tokens
-        types = [
-            t for t in types if isinstance(t, str) and t in allowed
-        ]
+        types = [t for t in types if isinstance(t, str) and t in allowed]
         priority = e.get("priority")
         try:
             priority = int(priority)
