@@ -14,9 +14,8 @@ providers:
 # How long /api/models responses may be served from the last computed snapshot (in seconds)
 cache_ttl_seconds: 300
 
-refresh:
-  # Interval for refreshing the list of models from all providers
-  interval_seconds: 60
+# Interval for refreshing the list of models from all providers
+refresh_interval_seconds: 60
 
 enrichment:
   # Model used by the brain to enrich model metadata
@@ -28,8 +27,7 @@ enrichment:
   # Maximum number of models to enrich in a single batch
   max_batch_size: 5
 
-timeout:
-  # Timeout for fetching models from providers
-  fetch_models_seconds: 10
-  # Timeout for enriching models
-  enrich_models_seconds: 60
+# Timeout for fetching models from providers
+timeout_fetch_models_seconds: 10
+# Timeout for enriching models
+timeout_enrich_models_seconds: 60
