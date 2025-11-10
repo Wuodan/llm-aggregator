@@ -96,6 +96,7 @@
         alert('Failed to clear data (' + res.status + ')');
         return;
       }
+      sleep(4000);
       await loadModels();
     } catch (err) {
       console.error('Error clearing data', err);
