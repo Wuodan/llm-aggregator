@@ -90,7 +90,7 @@ async def gather_models() -> List[Dict[str, Any]]:
 
 # ---------- Enrichment helpers (two separate calls per model) ----------
 
-async def brain_call(prompt: str, systemPrompt: str) -> str:
+async def brain_call(prompt: str, system_prompt: str) -> str:
     """Low-level helper to call brain and return stripped text."""
     try:
         headers = {}
@@ -105,7 +105,7 @@ async def brain_call(prompt: str, systemPrompt: str) -> str:
                 json={
                     "model": ENRICH_MODEL_ID,
                     "messages": [
-                        {"role": "system", "content": systemPrompt},
+                        {"role": "system", "content": system_prompt},
                         {"role": "user", "content": prompt},
                     ],
                     "temperature": 0.2,
@@ -138,7 +138,7 @@ async def brain_call(prompt: str, systemPrompt: str) -> str:
 
 
 async def get_summary(model_id: str) -> str:
-    systemPrompt = (
+    system_prompt = (
         "You are a concise, reliable assistant. "
         "Always follow the instructions exactly."
     )
@@ -147,11 +147,11 @@ async def get_summary(model_id: str) -> str:
         "In a few keywords (no bullets, no markdown) summarizing what this model is.\n"
         "Do not mention that you are an AI or assistant."
     )
-    return await brain_call(prompt, systemPrompt)
+    return await brain_call(prompt, system_prompt)
 
 
-```async def get_types(model_id: str) -> str:
-    systemPrompt = (
+async def get_types(model_id: str) -> str:
+    system_prompt = (
         "## Model Types\n\n"
         "Here are the model types and what they mean:\n\n"
         "| Type          | Full Name / Meaning          | Input → Output                   | Typical Use Case                          |\n"
@@ -170,12 +170,9 @@ async def get_summary(model_id: str) -> str:
         f"Model ID: {model_id}\n"
         "You are a classifier that outputs only valid model type tokens.\n"
         "Allowed tokens are only the model types from the model table.\n"
-        "Rules:\n"
-        "- Reply with one or more tokens separated by a single space.\n"
-        "- Do not include punctuation, bullets, colons, or extra words.\n"
-        "- If no type fits, reply with an empty line."
+        "Return a single JSON object: {\"types\": [\"space\", \"type1\", \"type2\", ...]}."
     )
-    return await brain_call(prompt, systemPrompt)
+    return await brain_call(prompt, system_prompt)
 
 
 async def enrich_missing_once() -> None:
