@@ -52,7 +52,7 @@ class BackgroundTasksManager:
                         await self._store.update_models(models)
                     except asyncio.CancelledError:
                         # normal during shutdown
-                        raise
+                        pass
                     except Exception as e:
                         logging.error("Error in model refresh loop: %r", e)
 
@@ -71,7 +71,7 @@ class BackgroundTasksManager:
             logging.info("Background enrichment loop started")
             settings_inner = get_settings()
             max_batch = int(settings_inner.brain.max_batch_size)
-            idle_sleep = 5.0 # for enrichment loop when queue is empty
+            idle_sleep = 5 # for enrichment loop when queue is empty
 
             try:
                 while not self._stopping.is_set():
@@ -96,7 +96,7 @@ class BackgroundTasksManager:
                             continue
 
                     except asyncio.CancelledError:
-                        raise
+                        pass
                     except Exception as e:
                         logging.error("Error in enrichment loop: %r", e)
                         await _sleep_until_stop(self._stopping, idle_sleep)
@@ -108,6 +108,15 @@ class BackgroundTasksManager:
         loop = asyncio.get_running_loop()
         self._refresh_task = loop.create_task(refresh_loop(), name="models-refresh")
         self._enrich_task = loop.create_task(enrichment_loop(), name="models-enrich")
+
+    async def restart(self) -> None:
+        self._refresh_task.cancel()
+        self._enrich_task.cancel()
+        await self._store.clear()
+        self._refresh_task=None
+        self._enrich_task=None
+        await self.start()
+
 
     async def stop(self) -> None:
         """Signal loops to stop and wait for them to exit."""
@@ -132,7 +141,7 @@ class BackgroundTasksManager:
         self._stopping = asyncio.Event()
 
 
-async def _sleep_until_stop(stop_event: asyncio.Event, timeout: float) -> None:
+async def _sleep_until_stop(stop_event: asyncio.Event, timeout: int) -> None:
     """Sleep up to `timeout` seconds, but wake early if stop_event is set.
 
     No exceptions, no logging: this is normal control flow.

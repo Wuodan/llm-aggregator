@@ -55,8 +55,7 @@ def get_stats():
 async def clear_data():
     """Clear/wipe all model-related data (adapt to your ModelStore API)."""
     # Implement this in your ModelStore (e.g. reset caches, enrichment, etc.)
-    if hasattr(store, "clear"):
-        await store.clear()  # make clear() async; or remove await if sync
+    await tasks_manager.restart()
     return JSONResponse({"status": "cleared"})
 
 

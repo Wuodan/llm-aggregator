@@ -62,12 +62,12 @@ async def _get_enriched_list(payload: dict[str, str | list[dict[str, str]] | flo
         enriched_obj: dict | None = _extract_json_object(completions)
         if not isinstance(enriched_obj, dict):
             logging.error("Brain did not return a JSON object: %r", completions)
-            raise
+            return []
 
         enriched_list = enriched_obj.get("enriched")
         if not isinstance(enriched_list, list):
             logging.error("Brain JSON missing 'enriched' list: %r", enriched_obj)
-            raise
+            return []
 
     except Exception as e:
         logging.error("Brain enrich error: %r", e)
