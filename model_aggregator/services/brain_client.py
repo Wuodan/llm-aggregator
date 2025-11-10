@@ -135,7 +135,10 @@ async def enrich_batch(models: List[ModelInfo]) -> List[EnrichedModel]:
                     logging.error("Brain returned non-JSON response: %.200r", text)
                     return []
     except Exception as e:
-        logging.error("Brain enrichment request error: %r", e)
+        if isinstance(e, TimeoutError):
+            logging.warn("Brain enrichment timeout error: %r", e)
+        else:
+            logging.error("Brain enrichment request general error: %r", e)
         return []
 
     # Parse OpenAI-style response
