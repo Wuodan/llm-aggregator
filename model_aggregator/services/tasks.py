@@ -75,7 +75,7 @@ class BackgroundTasksManager:
             max_batch = settings_inner.enrichment.max_batch_size
 
             # Short idle sleep when there's nothing to do
-            idle_sleep = 1.0
+            idle_sleep = 5.0
 
             while not self._stopping.is_set():
                 try:

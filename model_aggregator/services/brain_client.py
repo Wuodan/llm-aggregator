@@ -7,7 +7,7 @@ from typing import List
 import aiohttp
 
 from ..config import get_settings
-from ..models import EnrichedModel, ModelInfo, ModelKey
+from ..models import EnrichedModel, ModelInfo
 
 
 ALLOWED_TYPES = {
@@ -50,9 +50,6 @@ async def enrich_batch(models: List[ModelInfo]) -> List[EnrichedModel]:
         "Only respond with a single JSON object, no markdown, no extra text."
     )
 
-    # models = json.dumps(input_models[:15])
-    models = json.dumps(input_models)
-
     user_prompt = (
         "Given the following JSON array 'models', generate detailed metadata for each model.\n"
         "\n"
@@ -61,6 +58,7 @@ async def enrich_batch(models: List[ModelInfo]) -> List[EnrichedModel]:
         "  \"enriched\": [\n"
         "    {\n"
         "      \"model\": \"<exact id from input>\",\n"
+        "      \"server_port\": <port from input>,\n"
         "      \"summary\": \"<very short description of this specific model>\",\n"
         "      \"types\": [\"llm\" | \"vlm\" | \"embedder\" | \"reranker\" | \"tts\" | \"asr\" | \"diarize\" | \"cv\" | \"image_gen\"],\n"
         "      \"recommended_use\": \"<1 concise sentence with recommended use cases>\",\n"
@@ -76,8 +74,11 @@ async def enrich_batch(models: List[ModelInfo]) -> List[EnrichedModel]:
         "- Never add extra top-level keys.\n"
         "- Never wrap your answer in markdown.\n"
         "\n"
-        "Input 'models' follow (JSON array):\n"
+        "Input 'models' follow (JSON array):"
     )
+
+    # IMPORTANT: don't overwrite `models` (the list of ModelInfo)!
+    models_json = json.dumps(input_models, ensure_ascii=False)
 
     url = f"{settings.marvin_host}:{enrich_cfg.port}/v1/chat/completions"
 
@@ -93,7 +94,7 @@ async def enrich_batch(models: List[ModelInfo]) -> List[EnrichedModel]:
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
-            {"role": "user", "content": models}
+            {"role": "user", "content": models_json},
         ],
         "temperature": 0.2,
     }
@@ -117,7 +118,7 @@ async def enrich_batch(models: List[ModelInfo]) -> List[EnrichedModel]:
                     logging.error("Brain returned non-JSON response: %.200r", text)
                     return []
     except Exception as e:
-        logging.error("Brain enrichment request error: %s", e)
+        logging.error("Brain enrichment request error: %r", e)
         return []
 
     # Parse OpenAI-style response
@@ -131,7 +132,7 @@ async def enrich_batch(models: List[ModelInfo]) -> List[EnrichedModel]:
             logging.error("Brain response missing content field: %r", response)
             return []
     except Exception as e:
-        logging.error("Brain response parsing error: %s", e)
+        logging.error("Brain response parsing error: %r", e)
         return []
 
     # Extract JSON from content (robust against minor wrapping)
