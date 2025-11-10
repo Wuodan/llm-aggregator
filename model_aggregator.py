@@ -10,13 +10,17 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+# ---------- Config ----------
+
 MARVIN_HOST = "http://10.7.2.100"
 PORTS = [8080, 8090, 11434]
 
 CACHE_TTL = 300  # seconds for /api/models responses
-ENRICH_MODEL_ID = "NexaAI/gemma-3n-E2B-it-4bit-MLX"
-ENRICH_PORT = 8090
-ENRICH_DELAY = 0.4  # delay between enrich calls to avoid 429
+
+ENRICH_MODEL_ID = "unsloth/GLM-4.6-GGUF:UD-IQ2_XXS"
+ENRICH_PORT = 8080
+ENRICH_DELAY = 0.5  # delay between brain calls
+ENRICH_LOOP_INTERVAL = 60  # how often the background loop tries to fill missing entries
 
 logging.basicConfig(
     level=logging.INFO,
@@ -27,9 +31,12 @@ app = FastAPI()
 
 # Full payload cache for /api/models
 cache: Dict[str, Any] = {"data": None, "ts": 0}
-# Per-model enrichment cache so we never re-ask Gemma for same id
+# Per-model enrichment cache so we never re-ask brain for same id
+# model_id -> {"summary": str, "recommended_use": str}
 enriched_by_model: Dict[str, Dict[str, str]] = {}
 
+
+# ---------- Model fetching ----------
 
 async def fetch_models(session: aiohttp.ClientSession, port: int) -> List[Dict[str, Any]]:
     """Fetch model list from one LLM server port, robustly."""
@@ -81,89 +88,35 @@ async def gather_models() -> List[Dict[str, Any]]:
     return all_models
 
 
-def _strip_md(line: str) -> str:
-    """Remove simple markdown chars."""
-    return line.lstrip("#*- ").strip()
+# ---------- Enrichment helpers (two separate calls per model) ----------
 
-
-def parse_enrichment_text(model_id: str, content: str) -> Dict[str, str]:
-    """
-    Extract summary & recommendation from messy LLM output.
-    Best-effort, never throws.
-    """
-    content = (content or "").strip()
-    if not content:
-        return {"summary": "", "recommended_use": ""}
-
-    lines = [l.strip() for l in content.splitlines() if l.strip()]
-    summary = ""
-    recommended = ""
-
-    # Prefer explicit markers
-    for raw in lines:
-        line = _strip_md(raw)
-        lower = line.lower()
-
-        if not summary and (lower.startswith("summary:") or lower.startswith("**summary:**")):
-            summary = line.split(":", 1)[1].strip()
-            continue
-
-        if not recommended and (
-            lower.startswith("recommended:")
-            or lower.startswith("**recommended:**")
-            or lower.startswith("use-case:")
-            or lower.startswith("**use-case:**")
-        ):
-            recommended = line.split(":", 1)[1].strip()
-            continue
-
-        if not summary and lower.startswith("line 1:"):
-            summary = line.split(":", 1)[1].strip()
-            continue
-
-        if not recommended and lower.startswith("line 2:"):
-            recommended = line.split(":", 1)[1].strip()
-            continue
-
-    # Fallback: first and second sentence
-    if not summary or not recommended:
-        text = " ".join(_strip_md(l) for l in lines)
-        parts = [p.strip() for p in text.replace("\n", " ").split(".") if p.strip()]
-        if not summary and parts:
-            summary = parts[0]
-        if not recommended and len(parts) > 1:
-            recommended = parts[1]
-
-    if not summary and not recommended:
-        logging.warning("Unparseable enrichment for %s: %.200r", model_id, content)
-        return {"summary": "", "recommended_use": ""}
-
-    return {"summary": summary, "recommended_use": recommended}
-
-
-async def enrich_single(client: httpx.AsyncClient, model_id: str) -> Dict[str, str]:
-    """Ask Gemma about one model id. Best-effort, safe."""
-    prompt = (
-        "You are a concise model catalog helper.\n"
-        "For the given local model ID, briefly explain what it is and when to use it.\n"
-        "Respond in 2-4 short sentences. Do NOT output JSON.\n\n"
-        f"Model ID: {model_id}"
-    )
-
+async def brain_call(prompt: str, systemPrompt: str) -> str:
+    """Low-level helper to call brain and return stripped text."""
     try:
-        r = await client.post(
-            f"{MARVIN_HOST}:{ENRICH_PORT}/v1/chat/completions",
-            json={
-                "model": ENRICH_MODEL_ID,
-                "messages": [{"role": "user", "content": prompt}],
-                "temperature": 0.2,
-            },
-            timeout=20.0,
-        )
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            r = await client.post(
+                f"{MARVIN_HOST}:{ENRICH_PORT}/v1/chat/completions",
+                json={
+                    "model": ENRICH_MODEL_ID,
+                    "messages": [
+                        {
+                            "role": "system",
+                            "content": (
+                                systemPrompt
+                            ),
+                        },
+                        {
+                            "role": "user",
+                            "content": prompt,
+                        },
+                    ],
+                    "temperature": 0.2,
+                },
+            )
 
         if r.status_code == 429:
-            logging.warning("Rate limited while enriching %s (429).", model_id)
-            return {"summary": "", "recommended_use": ""}
+            logging.warning("brain rate limit (429) on prompt: %.120r", prompt)
+            return ""
 
         r.raise_for_status()
         data = r.json()
@@ -172,79 +125,201 @@ async def enrich_single(client: httpx.AsyncClient, model_id: str) -> Dict[str, s
             .get("message", {})
             .get("content", "")
         )
-        return parse_enrichment_text(model_id, content)
+        if not isinstance(content, str):
+            return ""
+        # First non-empty line is enough for our one-liner usage.
+        for line in content.splitlines():
+            line = line.strip()
+            if line:
+                return line
+        return ""
     except Exception as e:
-        logging.warning("Enrichment failed for %s: %s", model_id, e)
-        return {"summary": "", "recommended_use": ""}
+        logging.warning("Brain call failed: %s", e)
+        return ""
 
 
-async def enrich(models: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+async def get_summary(model_id: str) -> str:
+    systemPrompt = (
+        "You are a concise, reliable assistant. "
+        "Always follow the instructions exactly."
+    )
+    prompt = (
+        f"Model ID: {model_id}\n"
+        "In a few keywords (no bullets, no markdown) summarizing what this model is.\n"
+        "Do not mention that you are an AI or assistant."
+    )
+    return await brain_call(prompt, systemPrompt)
+
+
+async def get_recommended_use(model_id: str) -> str:
+    systemPrompt = (
+        "## Model Types\n\n"
+        "Here are the model types and what they mean:\n\n"
+        "| Type          | Full Name / Meaning          | Input → Output                   | Typical Use Case                          |\n"
+        "|---------------|------------------------------|----------------------------------|-------------------------------------------|\n"
+        "| **llm**       | Large Language Model         | Text → Text                      | Chatbots, coding assistants, reasoning    |\n"
+        "| **vlm**       | Vision-Language Model        | Image + Text → Text              | Visual Q&A, captioning, multimodal agents |\n"
+        "| **embedder**  | Embedding Model              | Text → Vector (numeric array)    | Semantic search, retrieval, RAG           |\n"
+        "| **reranker**  | Reranking Model              | Query + Candidates → Ranked list | Improving search or RAG results           |\n"
+        "| **tts**       | Text-to-Speech               | Text → Audio                     | Generate spoken output, voice synthesis   |\n"
+        "| **asr**       | Automatic Speech Recognition | Audio → Text                     | Transcribe recordings or live speech      |\n"
+        "| **diarize**   | Speaker Diarization          | Audio → Speaker segments         | Detect who spoke when in audio            |\n"
+        "| **cv**        | Computer Vision              | Image → Labels / Features        | Object detection, classification          |\n"
+        "| **image_gen** | Image Generation             | Text → Image                     | Generative art, visual assistants         |\n"
+    )
+    prompt = (
+        f"Model ID: {model_id}\n"
+        "From the model types, list the types that best matches this model.\n"
+        "Do not add any more text (no prefix, no sentence before or after) than those types.\n"
+        "I repeat: the only words allowed are those types.\n"
+        "Good example: llm vlm\n"
+        "Bad example 1: This model is a llm and vlm.\n"
+        "Bad example 2: Here are the model types that best match \"Model ID: TinyLlama_Chat\""
+    )
+    return await brain_call(prompt, systemPrompt)
+
+
+async def enrich_missing_once() -> None:
     """
-    Enrich ALL missing models once, sequentially with delay.
-    Uses a cache so each model is only asked once.
+    Enrich missing models once (non-blocking style):
+
+    - Looks at the current cache's model list.
+    - For each model without summary/recommended_use in enriched_by_model:
+      call brain twice (summary + recommended), with a small delay.
+    - Updates enriched_by_model and cache incrementally.
     """
+    data = cache.get("data") or {}
+    models = data.get("models") or []
     if not models:
-        return []
+        logging.info("No models in cache yet, skipping enrichment cycle")
+        return
 
-    missing_ids = [m["id"] for m in models if m["id"] not in enriched_by_model]
+    # Find models that still need enrichment
+    missing_ids: List[str] = []
+    for m in models:
+        mid = m.get("id")
+        if not mid:
+            continue
+        info = enriched_by_model.get(mid)
+        if not info or (not info.get("summary") or not info.get("recommended_use")):
+            missing_ids.append(mid)
 
-    if missing_ids:
-        logging.info("Enriching %d new models this cycle", len(missing_ids))
-        async with httpx.AsyncClient() as client:
-            for mid in missing_ids:
-                info = await enrich_single(client, mid)
-                enriched_by_model[mid] = info
-                await asyncio.sleep(ENRICH_DELAY)
-    else:
-        logging.info("No new models to enrich this cycle")
+    if not missing_ids:
+        logging.info("No missing enrichment entries this cycle")
+        return
 
-    # Build enriched list aligned with current models
+    logging.info("Enriching %d models this cycle", len(missing_ids))
+
+    for mid in missing_ids:
+        # Double-check in case another loop filled it
+        current = enriched_by_model.get(mid, {})
+        if current.get("summary") and current.get("recommended_use"):
+            continue
+
+        summary = current.get("summary") or await get_summary(mid)
+        await asyncio.sleep(ENRICH_DELAY)
+        recommended = current.get("recommended_use") or await get_recommended_use(mid)
+        await asyncio.sleep(ENRICH_DELAY)
+
+        enriched_by_model[mid] = {
+            "summary": summary or "",
+            "recommended_use": recommended or "",
+        }
+
+        # Update cache.enriched incrementally so /api/models shows progress
+        cached = cache.get("data")
+        if cached:
+            enriched_list: List[Dict[str, Any]] = []
+            for m in cached.get("models", []):
+                mid2 = m.get("id")
+                if not mid2:
+                    continue
+                info2 = enriched_by_model.get(mid2, {"summary": "", "recommended_use": ""})
+                enriched_list.append(
+                    {
+                        "model": mid2,
+                        "summary": info2.get("summary", ""),
+                        "recommended_use": info2.get("recommended_use", ""),
+                    }
+                )
+            cached["enriched"] = enriched_list
+            # no ts bump needed; it's still "current snapshot"
+    logging.info("Enrichment cycle completed")
+
+
+# ---------- Cache management ----------
+
+def build_enriched_snapshot(models: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Build enriched list from current cache; blanks where unknown."""
     enriched_list: List[Dict[str, Any]] = []
     for m in models:
-        mid = m["id"]
+        mid = m.get("id")
+        if not mid:
+            continue
         info = enriched_by_model.get(mid, {"summary": "", "recommended_use": ""})
-        enriched_list.append({
-            "model": mid,
-            "summary": info.get("summary", ""),
-            "recommended_use": info.get("recommended_use", ""),
-        })
-
+        enriched_list.append(
+            {
+                "model": mid,
+                "summary": info.get("summary", ""),
+                "recommended_use": info.get("recommended_use", ""),
+            }
+        )
     return enriched_list
 
 
-async def refresh_cache() -> None:
-    """Refresh cache with latest model list plus enrichment."""
-    logging.info("Refreshing cache")
+async def refresh_cache_models_only() -> None:
+    """
+    Refresh only the model list and expose whatever enrichment we already have.
+
+    This is fast and ensures /api/models always returns immediately with:
+    - full live model list
+    - summaries/uses for models we already processed
+    - blanks for the rest
+    """
+    logging.info("Refreshing models list (models-only)")
     models = await gather_models()
-    enriched = await enrich(models)
-    cache["data"] = {"models": models, "enriched": enriched}
+    enriched_snapshot = build_enriched_snapshot(models)
+    cache["data"] = {"models": models, "enriched": enriched_snapshot}
     cache["ts"] = time.time()
     logging.info(
-        "Cache updated: %d models, %d enriched entries",
+        "Models-only cache updated: %d models, %d enriched entries present",
         len(models),
-        len(enriched),
+        sum(1 for e in enriched_snapshot if e.get("summary") or e.get("recommended_use")),
     )
 
 
+# ---------- FastAPI lifecycle & endpoints ----------
+
 @app.on_event("startup")
 async def startup_event() -> None:
-    """Initial fill + background loop."""
-    await refresh_cache()
+    """
+    On startup:
+    - Fetch models & build initial snapshot (no waiting for brain).
+    - Start background task that periodically fills missing enrichment.
+    """
+    await refresh_cache_models_only()
 
-    async def loop():
+    async def enrich_loop():
         while True:
-            await asyncio.sleep(600)
-            await refresh_cache()
+            try:
+                await enrich_missing_once()
+            except Exception as e:
+                logging.warning("Enrichment loop error: %s", e)
+            await asyncio.sleep(ENRICH_LOOP_INTERVAL)
 
-    asyncio.create_task(loop())
+    asyncio.create_task(enrich_loop())
 
 
 @app.get("/api/models")
 async def api_models():
-    """Return cached model data or refresh if expired."""
-    if cache["data"] and (time.time() - cache["ts"] < CACHE_TTL):
-        return JSONResponse(cache["data"])
-    await refresh_cache()
+    """
+    Return cached model data.
+
+    If TTL expired, refresh models list quickly (no blocking on brain).
+    Enrichment continues in the background and is reflected progressively.
+    """
+    if not cache["data"] or (time.time() - cache["ts"] > CACHE_TTL):
+        await refresh_cache_models_only()
     return JSONResponse(cache["data"])
 
 
@@ -253,4 +328,5 @@ app.mount("/", StaticFiles(directory="static", html=True), name="static")
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8888)
