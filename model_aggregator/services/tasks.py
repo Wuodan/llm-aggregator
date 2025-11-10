@@ -4,7 +4,7 @@ import asyncio
 import logging
 from typing import List, Optional
 
-from .brain_client.brain_client import enrich_batch
+from .enrich_model.enrich_model import enrich_batch
 from .model_sources import gather_models
 from .model_store import ModelStore
 from ..config import get_settings

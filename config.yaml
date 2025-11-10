@@ -1,22 +1,6 @@
 # LLM Aggregator configuration
 # All runtime behavior should be driven from here, not hard-coded in code.
 
-
-providers:
-  - base_url: http://10.7.2.100
-    port: 8080
-  - base_url: http://10.7.2.100
-    port: 8090
-  - base_url: http://10.7.2.100
-    port: 11434
-
-# How long /api/models responses may be served from the last computed snapshot (in seconds)
-cache_ttl_seconds: 300
-
-refresh:
-  # Interval for refreshing the list of models from all providers
-  interval_seconds: 60
-
 brain:
   host: "http://10.7.2.100"
   # Port of the provider where the enrichment model is hosted
@@ -28,8 +12,23 @@ brain:
   # Maximum number of models to enrich in a single batch
   max_batch_size: 5
 
+refresh:
+  # Interval for refreshing the list of models from all providers
+  interval_seconds: 60
+
 timeout:
   # Timeout for fetching models from providers
   fetch_models_seconds: 10
   # Timeout for enriching models
   enrich_models_seconds: 60
+
+providers:
+  - base_url: http://10.7.2.100
+    port: 8080
+  - base_url: http://10.7.2.100
+    port: 8090
+  - base_url: http://10.7.2.100
+    port: 11434
+
+# How long /api/models responses may be served from the last computed snapshot (in seconds)
+cache_ttl_seconds: 300

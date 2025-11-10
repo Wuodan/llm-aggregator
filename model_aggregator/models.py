@@ -5,6 +5,28 @@ from typing import Any, Dict, List
 
 
 @dataclass(frozen=True)
+class BrainConfig:
+    """Configuration for the enrichment (brain) LLM endpoint."""
+
+    host: str
+    port: int
+    model_id: str
+    use_bearer_model_id: bool = True
+    max_batch_size: int = 1
+
+
+@dataclass(frozen=True)
+class RefreshConfig:
+    interval_seconds: int = 60
+
+
+@dataclass(frozen=True)
+class TimeoutConfig:
+    fetch_models_seconds: int = 10
+    enrich_models_seconds: int = 60
+
+
+@dataclass(frozen=True)
 class ProviderConfig:
     """Configuration for a single OpenAI-compatible provider.
 
@@ -19,17 +41,6 @@ class ProviderConfig:
     def base_endpoint(self) -> str:
         """Return the full base endpoint (e.g. "https://host:8080")."""
         return f"{self.base_url}:{self.port}"
-
-
-@dataclass(frozen=True)
-class BrainConfig:
-    """Configuration for the enrichment (brain) LLM endpoint."""
-
-    host: str
-    port: int
-    model_id: str
-    use_bearer_model_id: bool = True
-    max_batch_size: int = 1
 
 
 @dataclass(frozen=True)

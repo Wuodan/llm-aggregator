@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 
 
-def _extract_json_object(text: str):
+def _extract_json_object(text: str)-> dict | None:
     """Best-effort extraction of a JSON object from a string.
 
     The brain *should* return a single JSON object, but in practice might wrap

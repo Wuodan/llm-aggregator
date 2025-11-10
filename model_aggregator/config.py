@@ -4,7 +4,6 @@ import os
 from pathlib import Path
 from typing import List, Tuple
 
-from pydantic import BaseModel
 from pydantic_settings import (
     BaseSettings,
     SettingsConfigDict,
@@ -12,27 +11,18 @@ from pydantic_settings import (
     YamlConfigSettingsSource,
 )
 
-from .models import ProviderConfig, BrainConfig
+from .models import ProviderConfig, BrainConfig, RefreshConfig, TimeoutConfig
 
 CONFIG_ENV_VAR = "LLM_AGGREGATOR_CONFIG"
 DEFAULT_CONFIG_PATH = Path(__file__).resolve().parent.parent / "config.yaml"
 
 
-class RefreshConfig(BaseModel):
-    interval_seconds: int = 60
-
-
-class TimeoutConfig(BaseModel):
-    fetch_models_seconds: int = 10
-    enrich_models_seconds: int = 60
-
-
 class Settings(BaseSettings):
+    brain: BrainConfig
+    refresh: RefreshConfig
+    timeout: TimeoutConfig
     providers: List[ProviderConfig]
     cache_ttl_seconds: int = 300
-    refresh: RefreshConfig = RefreshConfig()
-    brain: BrainConfig
-    timeout: TimeoutConfig = TimeoutConfig()
 
     model_config = SettingsConfigDict(extra="forbid")
 
