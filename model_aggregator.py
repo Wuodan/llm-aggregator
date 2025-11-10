@@ -16,7 +16,7 @@ PORTS = [8080, 8090, 11434]
 CACHE_TTL = 300  # seconds for /api/models responses
 ENRICH_MODEL_ID = "NexaAI/gemma-3n-E2B-it-4bit-MLX"
 ENRICH_PORT = 8090
-MAX_ENRICH_PER_REFRESH = 5  # hard cap to avoid 429 / overload
+ENRICH_DELAY = 0.4  # delay between enrich calls to avoid 429
 
 logging.basicConfig(
     level=logging.INFO,
@@ -82,6 +82,7 @@ async def gather_models() -> List[Dict[str, Any]]:
 
 
 def _strip_md(line: str) -> str:
+    """Remove simple markdown chars."""
     return line.lstrip("#*- ").strip()
 
 
@@ -141,11 +142,11 @@ def parse_enrichment_text(model_id: str, content: str) -> Dict[str, str]:
 
 
 async def enrich_single(client: httpx.AsyncClient, model_id: str) -> Dict[str, str]:
-    """Ask Gemma about one model id (best-effort, safe)."""
+    """Ask Gemma about one model id. Best-effort, safe."""
     prompt = (
         "You are a concise model catalog helper.\n"
         "For the given local model ID, briefly explain what it is and when to use it.\n"
-        "Respond in 2–4 short sentences. Do NOT output JSON.\n\n"
+        "Respond in 2-4 short sentences. Do NOT output JSON.\n\n"
         f"Model ID: {model_id}"
     )
 
@@ -179,28 +180,25 @@ async def enrich_single(client: httpx.AsyncClient, model_id: str) -> Dict[str, s
 
 async def enrich(models: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
-    Enrich a LIMITED number of models per refresh.
-    Uses a global per-model cache. Never spams Gemma.
+    Enrich ALL missing models once, sequentially with delay.
+    Uses a cache so each model is only asked once.
     """
     if not models:
         return []
 
-    # Collect IDs and filter for ones without cached enrichment
     missing_ids = [m["id"] for m in models if m["id"] not in enriched_by_model]
 
-    # Only do a few per cycle to avoid 429 / exit 137
-    to_enrich = missing_ids[:MAX_ENRICH_PER_REFRESH]
-
-    if to_enrich:
-        logging.info("Enriching %d new models this cycle", len(to_enrich))
+    if missing_ids:
+        logging.info("Enriching %d new models this cycle", len(missing_ids))
         async with httpx.AsyncClient() as client:
-            for mid in to_enrich:
+            for mid in missing_ids:
                 info = await enrich_single(client, mid)
                 enriched_by_model[mid] = info
+                await asyncio.sleep(ENRICH_DELAY)
     else:
         logging.info("No new models to enrich this cycle")
 
-    # Build enriched list aligned to current models
+    # Build enriched list aligned with current models
     enriched_list: List[Dict[str, Any]] = []
     for m in models:
         mid = m["id"]
@@ -230,13 +228,12 @@ async def refresh_cache() -> None:
 
 @app.on_event("startup")
 async def startup_event() -> None:
-    """Initial fill + gentle background loop."""
-    # Initial fill
+    """Initial fill + background loop."""
     await refresh_cache()
 
     async def loop():
         while True:
-            await asyncio.sleep(600)  # wait, THEN refresh (no double at startup)
+            await asyncio.sleep(600)
             await refresh_cache()
 
     asyncio.create_task(loop())
