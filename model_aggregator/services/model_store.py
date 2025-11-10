@@ -87,8 +87,13 @@ class ModelStore:
 
                 merged_list.append(base)
 
-            # Sort by server_port and model-id
-            merged_list.sort(key=lambda m: (m["server_port"], m["id"]))
+            # Sort by server_port and model-id (case-insensitive)
+            merged_list.sort(
+                key=lambda m: (
+                    int(m.get("server_port", 0)),
+                    str(m.get("id", "")).lower()
+                )
+            )
 
             return merged_list
 
