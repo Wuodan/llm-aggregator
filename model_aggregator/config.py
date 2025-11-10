@@ -14,7 +14,6 @@ from pydantic_settings import (
 
 from .models import ProviderConfig, EnrichmentConfig
 
-
 CONFIG_ENV_VAR = "LLM_AGGREGATOR_CONFIG"
 DEFAULT_CONFIG_PATH = Path(__file__).resolve().parent.parent / "config.yaml"
 
@@ -29,20 +28,6 @@ class TimeoutConfig(BaseModel):
 
 
 class Settings(BaseSettings):
-    """
-    Settings loaded from YAML + env, matching existing config.yaml:
-
-    marvin_host: str
-    providers: list[ProviderConfig]
-    cache_ttl_seconds: int
-    refresh:
-      interval_seconds: int
-    enrichment: EnrichmentConfig
-    timeout:
-      fetch_models_seconds: int
-      enrich_models_seconds: int
-    """
-
     marvin_host: str
     providers: List[ProviderConfig]
     cache_ttl_seconds: int = 300
@@ -50,12 +35,8 @@ class Settings(BaseSettings):
     enrichment: EnrichmentConfig
     timeout: TimeoutConfig = TimeoutConfig()
 
-    # No unknown top-level keys allowed once fields are defined
     model_config = SettingsConfigDict(extra="forbid")
 
-    #
-    # Backwards-compatible helpers so old names keep working
-    #
     @property
     def refresh_interval_seconds(self) -> int:
         return self.refresh.interval_seconds
@@ -77,14 +58,6 @@ class Settings(BaseSettings):
         dotenv_settings: PydanticBaseSettingsSource,
         file_secret_settings: PydanticBaseSettingsSource,
     ) -> Tuple[PydanticBaseSettingsSource, ...]:
-        """
-        Load from:
-        - kwargs (if any)
-        - env vars
-        - YAML file (LLM_AGGREGATOR_CONFIG or default config.yaml)
-        - .env
-        - file secrets
-        """
         cfg_path_env = os.getenv(CONFIG_ENV_VAR)
         yaml_path = Path(cfg_path_env) if cfg_path_env else DEFAULT_CONFIG_PATH
 
