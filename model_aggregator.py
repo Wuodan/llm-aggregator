@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 import asyncio
-import json
 import logging
 import time
+from typing import Any, Dict, List
 
 import aiohttp
 import httpx
@@ -12,113 +12,248 @@ from fastapi.staticfiles import StaticFiles
 
 MARVIN_HOST = "http://10.7.2.100"
 PORTS = [8080, 8090, 11434]
-CACHE_TTL = 300  # seconds
+
+CACHE_TTL = 300  # seconds for /api/models responses
+ENRICH_MODEL_ID = "NexaAI/gemma-3n-E2B-it-4bit-MLX"
+ENRICH_PORT = 8090
+MAX_ENRICH_PER_REFRESH = 5  # hard cap to avoid 429 / overload
 
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
+    format="%(asctime)s - %(levelname)s - %(message)s"
 )
 
 app = FastAPI()
-cache = {"data": None, "ts": 0}
+
+# Full payload cache for /api/models
+cache: Dict[str, Any] = {"data": None, "ts": 0}
+# Per-model enrichment cache so we never re-ask Gemma for same id
+enriched_by_model: Dict[str, Dict[str, str]] = {}
 
 
-async def fetch_models(session, port: int):
+async def fetch_models(session: aiohttp.ClientSession, port: int) -> List[Dict[str, Any]]:
+    """Fetch model list from one LLM server port, robustly."""
     url = f"{MARVIN_HOST}:{port}/v1/models"
     try:
         async with session.get(url, timeout=10) as r:
-            j = await r.json()
-            models = j.get("data", j)
-        logging.info(f"Successfully fetched {len(models)} models from port {port}")
+            try:
+                j = await r.json(content_type=None)
+            except Exception:
+                text = await r.text()
+                logging.warning("Non-JSON /v1/models from port %s: %.200r", port, text)
+                return []
     except Exception as e:
-        logging.warning(f"Failed to fetch models from port {port}: {e}")
+        logging.warning("Failed to fetch models from port %s: %s", port, e)
+        return []
+
+    models: List[Dict[str, Any]] = []
+
+    if isinstance(j, dict):
+        data = j.get("data")
+        if isinstance(data, list):
+            models = data
+        elif isinstance(data, dict):
+            models = [data]
+        else:
+            logging.warning("Unexpected dict structure from port %s: %r", port, j)
+    elif isinstance(j, list):
+        models = j
+    else:
+        logging.warning("Unexpected /v1/models type from port %s: %r", port, type(j))
         models = []
+
+    clean: List[Dict[str, Any]] = []
     for m in models:
-        m["server_port"] = port
-    return models
+        if isinstance(m, dict) and "id" in m:
+            m["server_port"] = port
+            clean.append(m)
+
+    logging.info("Fetched %d models from port %s", len(clean), port)
+    return clean
 
 
-async def gather_models():
+async def gather_models() -> List[Dict[str, Any]]:
+    """Aggregate model lists from all configured ports."""
     async with aiohttp.ClientSession() as s:
-        results = await asyncio.gather(*[fetch_models(s, p) for p in PORTS])
-    all_models = []
-    for group in results:
-        all_models.extend(group)
-    logging.info(f"Gathered {len(all_models)} models from all ports")
+        results = await asyncio.gather(*(fetch_models(s, p) for p in PORTS))
+    all_models: List[Dict[str, Any]] = [m for group in results for m in group]
+    logging.info("Gathered %d models total", len(all_models))
     return all_models
 
 
-async def enrich(models):
-    """Use one local model to generate JSON with metadata & recommendations."""
-    if not models:
-        logging.info("No models to enrich")
-        return []
+def _strip_md(line: str) -> str:
+    return line.lstrip("#*- ").strip()
 
-    model_ids = [m["id"] for m in models]
+
+def parse_enrichment_text(model_id: str, content: str) -> Dict[str, str]:
+    """
+    Extract summary & recommendation from messy LLM output.
+    Best-effort, never throws.
+    """
+    content = (content or "").strip()
+    if not content:
+        return {"summary": "", "recommended_use": ""}
+
+    lines = [l.strip() for l in content.splitlines() if l.strip()]
+    summary = ""
+    recommended = ""
+
+    # Prefer explicit markers
+    for raw in lines:
+        line = _strip_md(raw)
+        lower = line.lower()
+
+        if not summary and (lower.startswith("summary:") or lower.startswith("**summary:**")):
+            summary = line.split(":", 1)[1].strip()
+            continue
+
+        if not recommended and (
+            lower.startswith("recommended:")
+            or lower.startswith("**recommended:**")
+            or lower.startswith("use-case:")
+            or lower.startswith("**use-case:**")
+        ):
+            recommended = line.split(":", 1)[1].strip()
+            continue
+
+        if not summary and lower.startswith("line 1:"):
+            summary = line.split(":", 1)[1].strip()
+            continue
+
+        if not recommended and lower.startswith("line 2:"):
+            recommended = line.split(":", 1)[1].strip()
+            continue
+
+    # Fallback: first and second sentence
+    if not summary or not recommended:
+        text = " ".join(_strip_md(l) for l in lines)
+        parts = [p.strip() for p in text.replace("\n", " ").split(".") if p.strip()]
+        if not summary and parts:
+            summary = parts[0]
+        if not recommended and len(parts) > 1:
+            recommended = parts[1]
+
+    if not summary and not recommended:
+        logging.warning("Unparseable enrichment for %s: %.200r", model_id, content)
+        return {"summary": "", "recommended_use": ""}
+
+    return {"summary": summary, "recommended_use": recommended}
+
+
+async def enrich_single(client: httpx.AsyncClient, model_id: str) -> Dict[str, str]:
+    """Ask Gemma about one model id (best-effort, safe)."""
     prompt = (
-        "You are a model catalog assistant.\n"
-        "For each of these model IDs, infer or look up (e.g. via Hugging Face) "
-        "their type and best use. Return ONLY a JSON list, no text around it.\n"
-        "Each entry: {\"model\":\"id\",\"summary\":\"one-line description\","
-        "\"recommended_use\":\"short suggestion\"}.\n\n"
-        f"Models: {json.dumps(model_ids)}"
+        "You are a concise model catalog helper.\n"
+        "For the given local model ID, briefly explain what it is and when to use it.\n"
+        "Respond in 2–4 short sentences. Do NOT output JSON.\n\n"
+        f"Model ID: {model_id}"
     )
 
     try:
-        async with httpx.AsyncClient(timeout=60.0) as c:
-            r = await c.post(
-                f"{MARVIN_HOST}:8090/v1/chat/completions",
-                json={
-                    "model": "NexaAI/gemma-3n-E2B-it-4bit-MLX",
-                    "messages": [{"role": "user", "content": prompt}],
-                    "temperature": 0.3,
-                },
-            )
-        r_json = r.json()
-        logging.info(f"r_json: {r_json}")
-        content = r_json["choices"][0]["message"]["content"]
-        logging.info(f"content: {content}")
-        return data
+        r = await client.post(
+            f"{MARVIN_HOST}:{ENRICH_PORT}/v1/chat/completions",
+            json={
+                "model": ENRICH_MODEL_ID,
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.2,
+            },
+            timeout=20.0,
+        )
+
+        if r.status_code == 429:
+            logging.warning("Rate limited while enriching %s (429).", model_id)
+            return {"summary": "", "recommended_use": ""}
+
+        r.raise_for_status()
+        data = r.json()
+        content = (
+            data.get("choices", [{}])[0]
+            .get("message", {})
+            .get("content", "")
+        )
+        return parse_enrichment_text(model_id, content)
     except Exception as e:
-        logging.error(f"Failed to enrich models: {e}")
+        logging.warning("Enrichment failed for %s: %s", model_id, e)
+        return {"summary": "", "recommended_use": ""}
 
-    return []
+
+async def enrich(models: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Enrich a LIMITED number of models per refresh.
+    Uses a global per-model cache. Never spams Gemma.
+    """
+    if not models:
+        return []
+
+    # Collect IDs and filter for ones without cached enrichment
+    missing_ids = [m["id"] for m in models if m["id"] not in enriched_by_model]
+
+    # Only do a few per cycle to avoid 429 / exit 137
+    to_enrich = missing_ids[:MAX_ENRICH_PER_REFRESH]
+
+    if to_enrich:
+        logging.info("Enriching %d new models this cycle", len(to_enrich))
+        async with httpx.AsyncClient() as client:
+            for mid in to_enrich:
+                info = await enrich_single(client, mid)
+                enriched_by_model[mid] = info
+    else:
+        logging.info("No new models to enrich this cycle")
+
+    # Build enriched list aligned to current models
+    enriched_list: List[Dict[str, Any]] = []
+    for m in models:
+        mid = m["id"]
+        info = enriched_by_model.get(mid, {"summary": "", "recommended_use": ""})
+        enriched_list.append({
+            "model": mid,
+            "summary": info.get("summary", ""),
+            "recommended_use": info.get("recommended_use", ""),
+        })
+
+    return enriched_list
 
 
-async def refresh_cache():
-    logging.info("Starting cache refresh")
+async def refresh_cache() -> None:
+    """Refresh cache with latest model list plus enrichment."""
+    logging.info("Refreshing cache")
     models = await gather_models()
     enriched = await enrich(models)
     cache["data"] = {"models": models, "enriched": enriched}
     cache["ts"] = time.time()
-    logging.info(f"Cache refreshed with {len(models)} models and {len(enriched)} enriched entries")
+    logging.info(
+        "Cache updated: %d models, %d enriched entries",
+        len(models),
+        len(enriched),
+    )
 
 
 @app.on_event("startup")
-async def startup_event():
-    logging.info("Application startup: starting background cache refresh loop")
+async def startup_event() -> None:
+    """Initial fill + gentle background loop."""
+    # Initial fill
+    await refresh_cache()
+
     async def loop():
         while True:
+            await asyncio.sleep(600)  # wait, THEN refresh (no double at startup)
             await refresh_cache()
-            await asyncio.sleep(600)  # refresh every 10 minutes
 
     asyncio.create_task(loop())
-    # await refresh_cache()  # initial fill
-    logging.info("Initial cache refresh completed on startup")
 
 
 @app.get("/api/models")
 async def api_models():
-    if cache["data"] and time.time() - cache["ts"] < CACHE_TTL:
+    """Return cached model data or refresh if expired."""
+    if cache["data"] and (time.time() - cache["ts"] < CACHE_TTL):
         return JSONResponse(cache["data"])
-    logging.info("Cache miss: refreshing cache")
     await refresh_cache()
     return JSONResponse(cache["data"])
 
 
+# Serve ./static (index.html) at /
 app.mount("/", StaticFiles(directory="static", html=True), name="static")
 
 if __name__ == "__main__":
     import uvicorn
-
     uvicorn.run(app, host="0.0.0.0", port=8888)
