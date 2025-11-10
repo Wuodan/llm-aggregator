@@ -123,26 +123,26 @@ async def enrich_models(models: List[Dict[str, Any]]) -> Dict[str, Any]:
 
     raw = await _post_to_brain(payload)
     if not raw:
-        logging.warning("Brain returned empty content or failed; continuing without enrichment")
+        logging.error("Brain returned empty content or failed; continuing without enrichment")
         return {"enriched": []}
 
     text = raw.strip()
     start = text.find("{")
     end = text.rfind("}")
     if start == -1 or end == -1 or end <= start:
-        logging.warning("Brain response did not contain JSON-looking content: %.200r", raw)
+        logging.error("Brain response did not contain JSON-looking content: %.200r", raw)
         return {"enriched": []}
 
     json_str = text[start : end + 1]
     try:
         obj = json.loads(json_str)
     except Exception as e:
-        logging.warning("Failed to parse brain JSON: %s; raw=%.200r", e, raw)
+        logging.error("Failed to parse brain JSON: %s; raw=%.200r", e, raw)
         return {"enriched": []}
 
     enriched = obj.get("enriched")
     if not isinstance(enriched, list):
-        logging.warning("Brain JSON missing 'enriched' list: %.200r", obj)
+        logging.error("Brain JSON missing 'enriched' list: %.200r", obj)
         return {"enriched": []}
 
     norm: List[Dict[str, Any]] = []
