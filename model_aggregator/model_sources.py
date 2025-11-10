@@ -16,10 +16,10 @@ async def fetch_models(session: aiohttp.ClientSession, port: int) -> List[Dict[s
                 j = await r.json(content_type=None)
             except Exception:
                 text = await r.text()
-                logging.warning("Non-JSON /v1/models from port %s: %.200r", port, text)
+                logging.error("Non-JSON /v1/models from port %s: %.200r", port, text)
                 return []
     except Exception as e:
-        logging.warning("Failed to fetch models from port %s: %s", port, e)
+        logging.error("Failed to fetch models from port %s: %s", port, e)
         return []
 
     models: List[Dict[str, Any]] = []
@@ -31,11 +31,11 @@ async def fetch_models(session: aiohttp.ClientSession, port: int) -> List[Dict[s
         elif isinstance(data, dict):
             models = [data]
         else:
-            logging.warning("Unexpected dict structure from port %s: %r", port, j)
+            logging.error("Unexpected dict structure from port %s: %r", port, j)
     elif isinstance(j, list):
         models = j
     else:
-        logging.warning("Unexpected /v1/models type from port %s: %r", port, type(j))
+        logging.error("Unexpected /v1/models type from port %s: %r", port, type(j))
         models = []
 
     clean: List[Dict[str, Any]] = []

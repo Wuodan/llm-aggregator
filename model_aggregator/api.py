@@ -26,7 +26,6 @@ cache: Dict[str, Any] = {"data": None, "ts": 0.0}
 
 
 async def refresh_cache() -> None:
-    """Refresh the full cache in one go (models + one brain call)."""
     logging.info("Refreshing /api/models cache (models + brain in one shot)")
     models = await gather_models()
     enriched = await enrich_models(models)

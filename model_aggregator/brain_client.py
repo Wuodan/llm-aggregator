@@ -18,36 +18,36 @@ async def _post_to_brain(payload: Dict[str, Any]) -> str:
         headers["Authorization"] = f"Bearer {ENRICH_MODEL_ID}"
 
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
+        async with httpx.AsyncClient(timeout=30.0) as client:
             r = await client.post(
                 f"{MARVIN_HOST}:{ENRICH_PORT}/v1/chat/completions",
                 headers=headers,
                 json=payload,
             )
     except httpx.TimeoutException as e:
-        logging.warning("Brain request timed out: %s", e)
+        logging.error("Brain request timed out: %s", e)
         return ""
     except httpx.HTTPError as e:
-        logging.warning("Brain HTTP error: %s", e)
+        logging.error("Brain HTTP error: %s", e)
         return ""
     except Exception as e:
-        logging.warning("Brain unexpected error: %s", e)
+        logging.error("Brain unexpected error: %s", e)
         return ""
 
     if r.status_code == 429:
-        logging.warning("Brain rate-limited with 429")
+        logging.error("Brain rate-limited with 429")
         return ""
 
     try:
         r.raise_for_status()
     except httpx.HTTPError as e:
-        logging.warning("Brain non-2xx status: %s", e)
+        logging.error("Brain non-2xx status: %s", e)
         return ""
 
     try:
         data = r.json()
     except Exception as e:
-        logging.warning("Brain invalid JSON response: %s", e)
+        logging.error("Brain invalid JSON response: %s", e)
         return ""
 
     content = (
