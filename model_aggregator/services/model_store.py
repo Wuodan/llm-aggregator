@@ -131,7 +131,7 @@ class ModelStore:
     async def requeue_models(self, models: List[ModelInfo]) -> None:
         """Re-enqueue models for enrichment after a failed attempt.
 
-        Only models that still exist in the store are requeued.
+        Only models that still exist in the store are re-queued.
         Duplicates are avoided via the same mechanism as initial enqueue.
         """
         if not models:

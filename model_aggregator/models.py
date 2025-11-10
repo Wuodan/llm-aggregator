@@ -17,7 +17,7 @@ class ProviderConfig:
 
     @property
     def base_endpoint(self) -> str:
-        """Return the full base endpoint (e.g. "http://host:8080")."""
+        """Return the full base endpoint (e.g. "https://host:8080")."""
         return f"{self.base_url}:{self.port}"
 
 
