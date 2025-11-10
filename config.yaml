@@ -1,0 +1,26 @@
+# LLM Aggregator configuration
+# All runtime behavior should be driven from here, not hard-coded in code.
+
+marvin_host: "http://10.7.2.100"
+
+providers:
+  - port: 8080
+  - port: 8090
+  - port: 11434
+
+# How long /api/models responses may be served from the last computed snapshot (in seconds)
+cache_ttl_seconds: 300
+
+refresh:
+  # Interval for refreshing the list of models from all providers
+  interval_seconds: 60
+
+enrichment:
+  # Model used by the brain to enrich model metadata
+  model_id: "unsloth/GLM-4.6-GGUF:UD-IQ2_XXS"
+  # Port of the provider where the enrichment model is hosted
+  port: 8080
+  # If true, send Authorization: Bearer <model_id> for calls to this port
+  use_bearer_model_id: true
+  # Maximum number of models to enrich in a single batch
+  max_batch_size: 15
