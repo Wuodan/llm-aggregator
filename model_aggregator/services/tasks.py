@@ -72,24 +72,34 @@ class BackgroundTasksManager:
             logging.info("Background enrichment loop started")
             settings_inner = get_settings()
             max_batch = int(settings_inner.enrichment.max_batch_size)
+            idle_sleep = 5.0
 
             try:
                 while not self._stopping.is_set():
                     try:
                         batch = await self._store.get_enrichment_batch(max_batch)
                         if not batch:
-                            # Nothing to do: short sleep, no errors, just idle.
                             await _sleep_until_stop(self._stopping, idle_sleep)
                             continue
 
-                        enriched: List[EnrichedModel] = await enrich_batch(batch)
-                        await self._store.apply_enrichment(enriched)
+                        # Try enrichment; on any failure, requeue the batch.
+                        try:
+                            enriched: List[EnrichedModel] = await enrich_batch(batch)
+                            if enriched:
+                                await self._store.apply_enrichment(enriched)
+                            else:
+                                # brain returned nothing -> requeue to retry later
+                                await self._store.requeue_models(batch)
+                        except Exception as e:
+                            logging.error("Brain enrichment failed: %r", e)
+                            await self._store.requeue_models(batch)
+                            await _sleep_until_stop(self._stopping, idle_sleep)
+                            continue
+
                     except asyncio.CancelledError:
-                        # normal during shutdown
                         raise
                     except Exception as e:
                         logging.error("Error in enrichment loop: %r", e)
-                        # brief backoff on real error
                         await _sleep_until_stop(self._stopping, idle_sleep)
             except asyncio.CancelledError:
                 pass

@@ -50,7 +50,6 @@ class ModelStore:
             for key in removed_keys:
                 self._models.pop(key, None)
                 self._enriched.pop(key, None)
-                # If it was queued but not yet processed, forget it
                 self._queued_keys.discard(key)
 
             # Add or update models
@@ -110,7 +109,7 @@ class ModelStore:
             except asyncio.QueueEmpty:
                 break
             else:
-                # Mark as no longer queued so it can be re-queued in future if needed
+                # Mark as no longer queued so it can be re-queued later if needed
                 self._queued_keys.discard(m.key)
                 batch.append(m)
 
@@ -128,6 +127,21 @@ class ModelStore:
             for em in enriched_models:
                 if em.key in self._models:
                     self._enriched[em.key] = em
+
+    async def requeue_models(self, models: List[ModelInfo]) -> None:
+        """Re-enqueue models for enrichment after a failed attempt.
+
+        Only models that still exist in the store are requeued.
+        Duplicates are avoided via the same mechanism as initial enqueue.
+        """
+        if not models:
+            return
+
+        async with self._lock:
+            for m in models:
+                # Only requeue if model is still active
+                if m.key in self._models:
+                    await self._enqueue_no_duplicate(m)
 
     # ------------------------------------------------------------------
     # Internal helpers
