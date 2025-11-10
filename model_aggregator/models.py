@@ -10,8 +10,9 @@ class BrainConfig:
 
     host: str
     port: int
-    model_id: str
-    use_bearer_model_id: bool = True
+    # The model-id
+    id: str
+    use_bearer_model: bool = True
     max_batch_size: int = 1
 
 
@@ -47,17 +48,18 @@ class ProviderConfig:
 class ModelKey:
     """Stable identifier for a model in this system.
 
-    We currently key by (server_port, model_id), which is sufficient as long as
+    We currently key by (server_port, model-id), which is sufficient as long as
     each port exposes a unique model ID namespace.
     """
 
     server_port: int
-    model_id: str
+    # Model ID
+    id: str
 
     @property
     def api_model(self) -> str:
         """Return the raw model id used in API payloads."""
-        return self.model_id
+        return self.id
 
 
 @dataclass
@@ -79,7 +81,7 @@ class ModelInfo:
         """
         # Ensure id + server_port are present at top-level.
         data = dict(self.raw)
-        data.setdefault("id", self.key.model_id)
+        data.setdefault("id", self.key.id)
         data.setdefault("server_port", self.key.server_port)
         return data
 
@@ -98,7 +100,7 @@ class EnrichedModel:
     def to_api_dict(self) -> Dict[str, Any]:
         """Return the shape expected in the public /api/models 'enriched' list."""
         return {
-            "model": self.key.model_id,
+            "model": self.key.id,
             "server_port": self.key.server_port,
             "summary": self.summary,
             "types": list(self.types),

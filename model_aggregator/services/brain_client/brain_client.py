@@ -15,11 +15,11 @@ async def chat_completions(payload: dict[str, str | list[dict[str, str]] | float
     headers:dict[str, str] = {
         "Content-Type": "application/json",
     }
-    if settings.brain.use_bearer_model_id:
+    if settings.brain.use_bearer_model:
         # For brain backend: bearer token equals model id
-        headers["Authorization"] = f"Bearer {settings.brain.model_id}"
+        headers["Authorization"] = f"Bearer {settings.brain.id}"
 
-    payload["model"] = settings.brain.model_id
+    payload["model"] = settings.brain.id
 
     try:
         async with aiohttp.ClientSession() as session:

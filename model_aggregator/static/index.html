@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en-GB">
 <head>
   <meta charset="utf-8">
   <title>Large Language Models</title>
@@ -29,28 +29,32 @@
 <script>
 async function load() {
   const res = await fetch('/api/models');
-  const data = await res.json();
-  const map = {};
-  (data.enriched || []).forEach(e => { if (e.model) map[e.model] = e; });
+  const data = await res.json();       // now { "models": [...] }
+  const rows = data.models || [];
 
   const tbody = document.querySelector('#tbl tbody');
   tbody.innerHTML = '';
-  (data.models || []).forEach(m => {
-    const e = map[m.id] || {};
+
+  rows.forEach(row => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td>${m.id}</td>
-      <td>${m.server_port || ''}</td>
-      <td>${e.types || ''}</td>
-      <td>${e.summary || ''}</td>
+      <td>${row.id || ''}</td>
+      <td>${row.server_port || ''}</td>
+      <td>${
+        Array.isArray(row.types)
+          ? row.types.join(', ')
+          : (row.types || '')
+      }</td>
+      <td>${row.summary || ''}</td>
     `;
     tbody.appendChild(tr);
   });
 
-  document.getElementById('tbl').style.display = '';
+  document.getElementById('tbl').style.display = rows.length ? '' : 'none';
   document.getElementById('updated').textContent =
     'Last update: ' + new Date().toLocaleTimeString();
 }
+
 load();
 setInterval(load, 60000);
 </script>

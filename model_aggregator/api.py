@@ -12,7 +12,6 @@ from .config import get_settings
 from .services.model_store import ModelStore
 from .services.tasks import BackgroundTasksManager
 
-
 # Initialize core components once at import time
 settings = get_settings()
 store = ModelStore()
@@ -46,7 +45,7 @@ async def api_models():
     Background tasks keep the store up to date.
     """
     snapshot = await store.get_snapshot()
-    return JSONResponse(snapshot)
+    return JSONResponse({"models": snapshot})
 
 
 # Serve ./static (index.html etc.) at /

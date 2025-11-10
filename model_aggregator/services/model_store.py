@@ -64,35 +64,33 @@ class ModelStore:
 
             self._last_update_ts = time.time()
 
-    async def get_snapshot(self) -> Dict[str, List[dict]]:
+    async def get_snapshot(self) -> List[dict]:
         """Return a snapshot compatible with the public /api/models shape.
 
         Structure:
-        {
-          "models":   [ ... ],
-          "enriched": [ ... ]
-        }
+        [
+            { ... model info ... },
+            ...
+        ]
         """
         async with self._lock:
-            models_list = [m.to_api_dict() for m in self._models.values()]
 
-            # Only include enriched entries that still have a backing model
-            enriched_list = [
-                em.to_api_dict()
-                for key, em in self._enriched.items()
-                if key in self._models
-            ]
+            # Merge models + optional enrichment
+            merged_list = []
 
-        # Sorting outside the lock: stable, deterministic output
-        models_list.sort(key=lambda m: (m.get("server_port", 0), str(m.get("id", ""))))
-        enriched_list.sort(
-            key=lambda e: (e.get("server_port", 0), str(e.get("model", "")))
-        )
+            for key, model in self._models.items():
+                base = model.to_api_dict()
+                enriched = self._enriched.get(key)
 
-        return {
-            "models": models_list,
-            "enriched": enriched_list,
-        }
+                if enriched is not None:
+                    base = {**base, **enriched.to_api_dict()}
+
+                merged_list.append(base)
+
+            # Sort by server_port and model-id
+            merged_list.sort(key=lambda m: (m["server_port"], m["id"]))
+
+            return merged_list
 
     async def get_enrichment_batch(self, max_batch_size: int) -> List[ModelInfo]:
         """Pop up to ``max_batch_size`` models from the queue for enrichment.

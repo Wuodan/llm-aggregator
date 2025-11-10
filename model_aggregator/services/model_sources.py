@@ -75,8 +75,7 @@ async def _fetch_models_for_provider(
     result: List[ModelInfo] = []
     for m in models_raw:
         if isinstance(m, dict) and "id" in m:
-            model_id = str(m["id"])
-            key = ModelKey(server_port=port, model_id=model_id)
+            key = ModelKey(server_port=port, id=str(m["id"]))
             raw = dict(m)
             raw["server_port"] = port
             result.append(ModelInfo(key=key, raw=raw))
@@ -112,7 +111,7 @@ async def gather_models() -> List[ModelInfo]:
         all_models.extend(res)
 
     # sort by port, then by model id
-    all_models.sort(key=lambda m: (m.key.server_port, m.key.model_id.lower()))
+    all_models.sort(key=lambda m: (m.key.server_port, m.key.id.lower()))
     logging.info("Gathered %d models total", len(all_models))
     return all_models
 
