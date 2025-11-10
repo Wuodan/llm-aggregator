@@ -1,7 +1,7 @@
 # LLM Aggregator configuration
 # All runtime behavior should be driven from here, not hard-coded in code.
 
-brainhost: "http://10.7.2.100"
+brain_host: "http://10.7.2.100"
 
 providers:
   - base_url: http://10.7.2.100

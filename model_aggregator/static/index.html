@@ -20,8 +20,8 @@
     <tr>
       <th>Model</th>
       <th>Port</th>
-      <th>Summary</th>
       <th>Types</th>
+      <th>Summary</th>
     </tr>
   </thead>
   <tbody></tbody>
@@ -41,8 +41,8 @@ async function load() {
     tr.innerHTML = `
       <td>${m.id}</td>
       <td>${m.server_port || ''}</td>
-      <td>${e.summary || ''}</td>
       <td>${e.types || ''}</td>
+      <td>${e.summary || ''}</td>
     `;
     tbody.appendChild(tr);
   });
