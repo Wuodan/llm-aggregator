@@ -3,6 +3,7 @@ import asyncio
 import json
 import logging
 import time
+import uuid
 
 import aiohttp
 import httpx
@@ -24,6 +25,7 @@ cache = {"data": None, "ts": 0}
 
 
 async def fetch_models(session, port: int):
+    logging.info(f"Fetching models from port {port}")
     url = f"{MARVIN_HOST}:{port}/v1/models"
     try:
         async with session.get(url, timeout=10) as r:
@@ -31,7 +33,11 @@ async def fetch_models(session, port: int):
             models = j.get("data", j)
         logging.info(f"Successfully fetched {len(models)} models from port {port}")
     except Exception as e:
-        logging.warning(f"Failed to fetch models from port {port}: {e}")
+        logging.error(f"Failed to fetch models from port {port}: {e}")
+        models = []
+
+    if not isinstance(models, list):
+        logging.error(f"Unexpected models format from port {port}: {type(models)}, using empty list")
         models = []
     for m in models:
         m["server_port"] = port
@@ -40,7 +46,10 @@ async def fetch_models(session, port: int):
 
 async def gather_models():
     async with aiohttp.ClientSession() as s:
-        results = await asyncio.gather(*[fetch_models(s, p) for p in PORTS])
+        results = []
+        for p in PORTS:
+            result = await fetch_models(s, p)
+            results.append(result)
     all_models = []
     for group in results:
         all_models.extend(group)
@@ -74,7 +83,25 @@ async def enrich(models):
                     "temperature": 0.3,
                 },
             )
-        content = r.json()["choices"][0]["message"]["content"]
+
+        await asyncio.sleep(3)
+
+        # Get body
+        body_str = (await r.aread()).decode('utf-8', errors='ignore')
+
+        # Log full response
+        response_log = f"Status: {r.status_code}\nHeaders:\n{str(r.headers)}\n\nBody:\n{body_str}"
+        filename = f"{uuid.uuid4()}_{int(time.time())}.txt"
+        with open(filename, 'w') as f:
+            f.write(response_log)
+        logging.info(f"Logged enrich response to {filename}")
+
+        if r.status_code != 200:
+            logging.error(f"Enrichment failed with status {r.status_code}, see log file {filename}")
+            return []
+
+        j = json.loads(body_str)
+        content = j["choices"][0]["message"]["content"]
         data = json.loads(content)
         if isinstance(data, list):
             logging.info(f"Successfully enriched {len(data)} models")
