@@ -5,8 +5,8 @@ import logging
 from typing import List
 
 from model_aggregator.models import ModelInfo, EnrichedModel
-from model_aggregator.services.brain_client._const import ENRICH_SYSTEM_PROMPT, ENRICH_USER_PROMPT
 from model_aggregator.services.brain_client.brain_client import chat_completions
+from model_aggregator.services.enrich_model._const import ENRICH_SYSTEM_PROMPT, ENRICH_USER_PROMPT
 from model_aggregator.services.enrich_model._map_enrich_result import _map_enrich_result
 from ._extract_json_object import _extract_json_object
 
@@ -41,7 +41,7 @@ async def enrich_batch(models: List[ModelInfo]) -> List[EnrichedModel]:
         "temperature": 0.2,
     }
 
-    enriched_list = _get_enriched_list(payload)
+    enriched_list = await _get_enriched_list(payload)
 
     # Map by (model, server_port) for safety
     input_keys = {

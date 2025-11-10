@@ -19,7 +19,7 @@ async def chat_completions(payload: dict[str, str | list[dict[str, str]] | float
         # For brain backend: bearer token equals model id
         headers["Authorization"] = f"Bearer {settings.brain.model_id}"
 
-    payload.model = settings.brain.model_id
+    payload["model"] = settings.brain.model_id
 
     try:
         async with aiohttp.ClientSession() as session:
@@ -28,24 +28,24 @@ async def chat_completions(payload: dict[str, str | list[dict[str, str]] | float
                 if r.status >= 400:
                     text = await r.text()
                     logging.error(
-                        "Brain enrichment call failed with HTTP %s: %.200r",
+                        "Brain call failed with HTTP %s: %.200r",
                         r.status,
                         text,
                     )
-                    return
+                    return None
 
                 try:
                     response = await r.json(content_type=None)
                 except Exception:
                     text = await r.text()
                     logging.error("Brain returned non-JSON response: %.200r", text)
-                    return
+                    return None
     except Exception as e:
         if isinstance(e, TimeoutError):
-            logging.warn("Brain enrichment timeout error: %r", e)
+            logging.warn("Brain request timeout error: %r", e)
         else:
-            logging.error("Brain enrichment request general error: %r", e)
-        return
+            logging.error("Brain request general error: %r", e)
+        return None
 
     # Parse OpenAI-style response
     try:
@@ -56,8 +56,10 @@ async def chat_completions(payload: dict[str, str | list[dict[str, str]] | float
         )
         if not isinstance(content, str) or not content.strip():
             logging.error("Brain response missing content field: %r", response)
-            return
+            return None
+
+        return content
 
     except Exception as e:
         logging.error("Brain response parsing error: %r", e)
-        return
+        return None
