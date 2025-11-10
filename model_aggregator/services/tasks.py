@@ -30,84 +30,71 @@ class BackgroundTasksManager:
         self._stopping = asyncio.Event()
 
     async def start(self) -> None:
-        """Start background loops.
-
-        Safe to call once; subsequent calls are ignored.
-        """
+        """Start background loops (idempotent)."""
         if self._refresh_task or self._enrich_task:
             return
 
         settings = get_settings()
-        refresh_interval = settings.refresh_interval_seconds
+        refresh_interval = float(settings.refresh_interval_seconds)
+        idle_sleep = 5.0  # for enrichment loop when queue is empty
 
         async def refresh_loop() -> None:
             logging.info(
                 "Background refresh loop started (interval=%ss)",
                 refresh_interval,
             )
-            # Small initial delay so app can start quickly
+            # tiny initial delay so the app is up before first fetch
             await asyncio.sleep(0.1)
-            while not self._stopping.is_set():
-                try:
-                    models: List[ModelInfo] = await gather_models()
-                    await self._store.update_models(models)
-                except asyncio.CancelledError as e:
-                    logging.error("CancelledError in model refresh loop: %r", e)
-                    break
-                except Exception as e:
-                    logging.error("Error in model refresh loop: %r", e)
-                # Wait; wake early if stopping
-                try:
-                    await asyncio.wait_for(
-                        self._stopping.wait(),
-                        timeout=refresh_interval,
-                    )
-                except asyncio.TimeoutError as e:
-                    logging.error("TimeoutError in model refresh loop: %r", e)
-                    # non-blocking
-                    pass
 
-            logging.info("Background refresh loop stopped")
+            try:
+                while not self._stopping.is_set():
+                    try:
+                        models: List[ModelInfo] = await gather_models()
+                        await self._store.update_models(models)
+                    except asyncio.CancelledError:
+                        # normal during shutdown
+                        raise
+                    except Exception as e:
+                        logging.error("Error in model refresh loop: %r", e)
+
+                    # Sleep in small chunks so we can react quickly to stop()
+                    remaining = refresh_interval
+                    step = 0.5
+                    while remaining > 0 and not self._stopping.is_set():
+                        await asyncio.sleep(min(step, remaining))
+                        remaining -= step
+            except asyncio.CancelledError:
+                pass
+            finally:
+                logging.info("Background refresh loop stopped")
 
         async def enrichment_loop() -> None:
             logging.info("Background enrichment loop started")
             settings_inner = get_settings()
-            max_batch = settings_inner.enrichment.max_batch_size
+            max_batch = int(settings_inner.enrichment.max_batch_size)
 
-            # Short idle sleep when there's nothing to do
-            idle_sleep = 5.0
-
-            while not self._stopping.is_set():
-                try:
-                    batch = await self._store.get_enrichment_batch(max_batch)
-                    if not batch:
-                        # Nothing to do right now; nap briefly
-                        try:
-                            await asyncio.wait_for(
-                                self._stopping.wait(), timeout=idle_sleep
-                            )
-                        except asyncio.TimeoutError as e:
-                            logging.error("TimeoutError 1 in enrichment loop: %r", e)
-                            continue
-                        continue
-
-                    enriched: List[EnrichedModel] = await enrich_batch(batch)
-                    await self._store.apply_enrichment(enriched)
-                except asyncio.CancelledError as e:
-                    logging.error("CancelledError in enrichment loop: %r", e)
-                    break
-                except Exception as e:
-                    logging.error("Error in enrichment loop: %r", e)
-                    # small backoff on error
+            try:
+                while not self._stopping.is_set():
                     try:
-                        await asyncio.wait_for(
-                            self._stopping.wait(), timeout=idle_sleep
-                        )
-                    except asyncio.TimeoutError as e:
-                        logging.error("TimeoutError 2 in enrichment loop: %r", e)
-                        continue
+                        batch = await self._store.get_enrichment_batch(max_batch)
+                        if not batch:
+                            # Nothing to do: short sleep, no errors, just idle.
+                            await _sleep_until_stop(self._stopping, idle_sleep)
+                            continue
 
-            logging.info("Background enrichment loop stopped")
+                        enriched: List[EnrichedModel] = await enrich_batch(batch)
+                        await self._store.apply_enrichment(enriched)
+                    except asyncio.CancelledError:
+                        # normal during shutdown
+                        raise
+                    except Exception as e:
+                        logging.error("Error in enrichment loop: %r", e)
+                        # brief backoff on real error
+                        await _sleep_until_stop(self._stopping, idle_sleep)
+            except asyncio.CancelledError:
+                pass
+            finally:
+                logging.info("Background enrichment loop stopped")
 
         loop = asyncio.get_running_loop()
         self._refresh_task = loop.create_task(refresh_loop(), name="models-refresh")
@@ -123,13 +110,28 @@ class BackgroundTasksManager:
         tasks = [t for t in (self._refresh_task, self._enrich_task) if t]
         for t in tasks:
             t.cancel()
+
         for t in tasks:
             try:
                 await t
-            except asyncio.CancelledError as e:
-                logging.warn("CancelledError 2 in stop(): %r", e)
+            except asyncio.CancelledError:
+                # expected during shutdown
                 pass
 
         self._refresh_task = None
         self._enrich_task = None
         self._stopping = asyncio.Event()
+
+
+async def _sleep_until_stop(stop_event: asyncio.Event, timeout: float) -> None:
+    """Sleep up to `timeout` seconds, but wake early if stop_event is set.
+
+    No exceptions, no logging: this is normal control flow.
+    """
+    end = asyncio.get_running_loop().time() + timeout
+    step = 0.2
+    while not stop_event.is_set():
+        now = asyncio.get_running_loop().time()
+        if now >= end:
+            break
+        await asyncio.sleep(min(step, end - now))

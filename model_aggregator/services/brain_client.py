@@ -80,8 +80,6 @@ async def enrich_batch(models: List[ModelInfo]) -> List[EnrichedModel]:
         "      \"server_port\": <port from input>,\n"
         "      \"summary\": \"<very short description of this specific model>\",\n"
         "      \"types\": [\"llm\" | \"vlm\" | \"embedder\" | \"reranker\" | \"tts\" | \"asr\" | \"diarize\" | \"cv\" | \"image_gen\"],\n"
-        "      \"recommended_use\": \"<1 concise sentence with recommended use cases>\",\n"
-        "      \"priority\": <integer 1-10, higher means better default choice>\n"
         "    },\n"
         "    ... one entry per input model, in the same order ...\n"
         "  ]\n"
@@ -89,7 +87,7 @@ async def enrich_batch(models: List[ModelInfo]) -> List[EnrichedModel]:
         "Rules:\n"
         "- Include EVERY input model exactly once.\n"
         "- Use ONLY the allowed type tokens.\n"
-        "- Keep summaries and recommended_use concise.\n"
+        "- Keep summaries concise.\n"
         "- Never add extra top-level keys.\n"
         "- Never wrap your answer in markdown.\n"
         "\n"
@@ -187,16 +185,6 @@ async def enrich_batch(models: List[ModelInfo]) -> List[EnrichedModel]:
             continue
 
         summary = str(item.get("summary") or "").strip()
-        recommended_use = str(item.get("recommended_use") or "").strip()
-        priority_raw = item.get("priority", 5)
-        try:
-            priority = int(priority_raw)
-        except Exception:
-            priority = 5
-        if priority < 1:
-            priority = 1
-        if priority > 10:
-            priority = 10
 
         types_raw = item.get("types") or []
         if isinstance(types_raw, str):
@@ -218,8 +206,6 @@ async def enrich_batch(models: List[ModelInfo]) -> List[EnrichedModel]:
                 key=key,
                 summary=summary,
                 types=types,
-                recommended_use=recommended_use,
-                priority=priority,
             )
         )
 

@@ -21,7 +21,7 @@
       <th>Model</th>
       <th>Port</th>
       <th>Summary</th>
-      <th>Recommended use</th>
+      <th>Types</th>
     </tr>
   </thead>
   <tbody></tbody>
@@ -42,7 +42,7 @@ async function load() {
       <td>${m.id}</td>
       <td>${m.server_port || ''}</td>
       <td>${e.summary || ''}</td>
-      <td>${e.recommended_use || ''}</td>
+      <td>${e.types || ''}</td>
     `;
     tbody.appendChild(tr);
   });

@@ -82,8 +82,6 @@ class EnrichedModel:
     key: ModelKey
     summary: str = ""
     types: List[str] = field(default_factory=list)
-    recommended_use: str = ""
-    priority: int = 5
 
     def to_api_dict(self) -> Dict[str, Any]:
         """Return the shape expected in the public /api/models 'enriched' list."""
@@ -92,6 +90,4 @@ class EnrichedModel:
             "server_port": self.key.server_port,
             "summary": self.summary,
             "types": list(self.types),
-            "recommended_use": self.recommended_use,
-            "priority": int(self.priority),
         }
