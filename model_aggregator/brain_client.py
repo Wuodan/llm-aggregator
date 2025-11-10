@@ -18,7 +18,7 @@ async def _post_to_brain(payload: Dict[str, Any]) -> str:
         headers["Authorization"] = f"Bearer {ENRICH_MODEL_ID}"
 
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=60.0) as client:
             r = await client.post(
                 f"{MARVIN_HOST}:{ENRICH_PORT}/v1/chat/completions",
                 headers=headers,
@@ -56,6 +56,7 @@ async def _post_to_brain(payload: Dict[str, Any]) -> str:
         .get("content", "")
     )
     if not isinstance(content, str):
+        logging.error("Content not a string: {content!r}")
         return ""
     return content.strip()
 
@@ -86,11 +87,11 @@ async def enrich_models(models: List[Dict[str, Any]]) -> Dict[str, Any]:
         "Your entire response MUST be a single valid JSON object."
     )
 
+    models = json.dumps(minimal_models)[:1]
+
     user_prompt = (
         "Given the following JSON array 'models', generate detailed metadata for each model.\n"
-        "Input 'models': \n"
-        + json.dumps(minimal_models)
-        + "\n"
+        "\n"
         "Return EXACTLY this JSON structure and nothing else:\n"
         "{\n"
         "  \"enriched\": [\n"
@@ -110,14 +111,18 @@ async def enrich_models(models: List[Dict[str, Any]]) -> Dict[str, Any]:
         "- Keep summaries and recommended_use concise.\n"
         "- Never add extra top-level keys.\n"
         "- Never wrap your answer in markdown.\n"
+        "\n"
+        "Input 'models' follow (JSON array):\n"
     )
 
     payload = {
         "model": ENRICH_MODEL_ID,
-        "temperature": 0.2,
+        # "temperature": 0.2,
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
+            {"role": "user", "content": models},
+            # {"role": "user", "content": "say hello world"},
         ],
     }
 
