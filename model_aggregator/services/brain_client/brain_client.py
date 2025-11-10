@@ -37,7 +37,7 @@ async def enrich_batch(models: List[ModelInfo]) -> List[EnrichedModel]:
     # IMPORTANT: don't overwrite `models` (the list of ModelInfo)!
     models_json = json.dumps(input_models, ensure_ascii=False)
 
-    url = f"{settings.marvin_host}:{enrich_cfg.port}/v1/chat/completions"
+    url = f"{settings.brain_host}:{enrich_cfg.port}/v1/chat/completions"
 
     headers = {
         "Content-Type": "application/json",

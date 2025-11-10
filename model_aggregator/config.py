@@ -28,7 +28,7 @@ class TimeoutConfig(BaseModel):
 
 
 class Settings(BaseSettings):
-    marvin_host: str
+    brain_host: str
     providers: List[ProviderConfig]
     cache_ttl_seconds: int = 300
     refresh: RefreshConfig = RefreshConfig()
