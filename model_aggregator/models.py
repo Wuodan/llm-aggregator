@@ -17,14 +17,12 @@ class BrainConfig:
 
 
 @dataclass(frozen=True)
-class RefreshConfig:
-    interval_seconds: int = 60
-
-
-@dataclass(frozen=True)
-class TimeoutConfig:
-    fetch_models_seconds: int = 10
-    enrich_models_seconds: int = 60
+class TimeConfig:
+    # Values by default in seconds
+    fetch_models_interval: int = 60
+    fetch_models_timeout: int = 10
+    enrich_models_timeout: int = 60
+    enrich_idle_sleep: int = 5
 
 
 @dataclass(frozen=True)

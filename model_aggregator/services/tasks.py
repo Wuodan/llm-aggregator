@@ -12,35 +12,26 @@ from ..models import ModelInfo, EnrichedModel
 
 
 class BackgroundTasksManager:
-    """Manage background refresh + enrichment loops.
-
-    Usage (wired from FastAPI lifespan / startup):
-
-        store = ModelStore()
-        manager = BackgroundTasksManager(store)
-        await manager.start()
-        ...
-        await manager.stop()
-    """
+    """Manage background mode-fetch + enrich loops."""
 
     def __init__(self, store: ModelStore) -> None:
         self._store = store
-        self._refresh_task: Optional[asyncio.Task] = None
+        self._fetch_models_task: Optional[asyncio.Task] = None
         self._enrich_task: Optional[asyncio.Task] = None
         self._stopping = asyncio.Event()
+        self._settings = get_settings()
 
     async def start(self) -> None:
         """Start background loops (idempotent)."""
-        if self._refresh_task or self._enrich_task:
+        if self._fetch_models_task or self._enrich_task:
             return
 
-        settings = get_settings()
-        refresh_interval = float(settings.refresh_interval_seconds)
+        fetch_models_interval = float(self._settings.fetch_models_interval)
 
         async def refresh_loop() -> None:
             logging.info(
                 "Background refresh loop started (interval=%ss)",
-                refresh_interval,
+                fetch_models_interval,
             )
             # tiny initial delay so the app is up before first fetch
             await asyncio.sleep(0.1)
@@ -57,7 +48,7 @@ class BackgroundTasksManager:
                         logging.error("Error in model refresh loop: %r", e)
 
                     # Sleep in small chunks so we can react quickly to stop()
-                    remaining = refresh_interval
+                    remaining = fetch_models_interval
                     step = 0.5
                     while remaining > 0 and not self._stopping.is_set():
                         await asyncio.sleep(min(step, remaining))
@@ -69,9 +60,8 @@ class BackgroundTasksManager:
 
         async def enrichment_loop() -> None:
             logging.info("Background enrichment loop started")
-            settings_inner = get_settings()
-            max_batch = int(settings_inner.brain.max_batch_size)
-            idle_sleep = 5 # for enrichment loop when queue is empty
+            max_batch = int(self._settings.brain.max_batch_size)
+            idle_sleep = int(self._settings.time.enrich_idle_sleep)
 
             try:
                 while not self._stopping.is_set():
@@ -106,26 +96,25 @@ class BackgroundTasksManager:
                 logging.info("Background enrichment loop stopped")
 
         loop = asyncio.get_running_loop()
-        self._refresh_task = loop.create_task(refresh_loop(), name="models-refresh")
+        self._fetch_models_task = loop.create_task(refresh_loop(), name="models-refresh")
         self._enrich_task = loop.create_task(enrichment_loop(), name="models-enrich")
 
     async def restart(self) -> None:
-        self._refresh_task.cancel()
+        self._fetch_models_task.cancel()
         self._enrich_task.cancel()
         await self._store.clear()
-        self._refresh_task=None
-        self._enrich_task=None
+        self._fetch_models_task = None
+        self._enrich_task = None
         await self.start()
-
 
     async def stop(self) -> None:
         """Signal loops to stop and wait for them to exit."""
-        if not (self._refresh_task or self._enrich_task):
+        if not (self._fetch_models_task or self._enrich_task):
             return
 
         self._stopping.set()
 
-        tasks = [t for t in (self._refresh_task, self._enrich_task) if t]
+        tasks = [t for t in (self._fetch_models_task, self._enrich_task) if t]
         for t in tasks:
             t.cancel()
 
@@ -136,7 +125,7 @@ class BackgroundTasksManager:
                 # expected during shutdown
                 pass
 
-        self._refresh_task = None
+        self._fetch_models_task = None
         self._enrich_task = None
         self._stopping = asyncio.Event()
 

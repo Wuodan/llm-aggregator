@@ -24,7 +24,7 @@ async def chat_completions(payload: dict[str, str | list[dict[str, str]] | float
     try:
         async with aiohttp.ClientSession() as session:
             async with session.post(url, headers=headers, json=payload,
-                                    timeout=settings.timeout_enrich_models_seconds) as r:
+                                    timeout=settings.enrich_models_timeout) as r:
                 if r.status >= 400:
                     text = await r.text()
                     logging.error(

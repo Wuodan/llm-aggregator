@@ -40,7 +40,7 @@ class ModelStore:
         - Adds newly discovered models and enqueues them for enrichment.
         - Keeps existing models as-is (no implicit re-enqueue).
 
-        This method is intended to be called by the periodic refresh loop.
+        This method is intended to be called by the periodic fetch loop.
         """
         async with self._lock:
             new_by_key = {m.key: m for m in new_models}

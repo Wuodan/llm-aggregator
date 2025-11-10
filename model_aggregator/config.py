@@ -11,7 +11,7 @@ from pydantic_settings import (
     YamlConfigSettingsSource,
 )
 
-from .models import ProviderConfig, BrainConfig, RefreshConfig, TimeoutConfig
+from .models import ProviderConfig, BrainConfig, TimeConfig
 
 CONFIG_ENV_VAR = "LLM_AGGREGATOR_CONFIG"
 DEFAULT_CONFIG_PATH = Path(__file__).resolve().parent.parent / "config.yaml"
@@ -19,24 +19,23 @@ DEFAULT_CONFIG_PATH = Path(__file__).resolve().parent.parent / "config.yaml"
 
 class Settings(BaseSettings):
     brain: BrainConfig
-    refresh: RefreshConfig
-    timeout: TimeoutConfig
+    time: TimeConfig
     providers: List[ProviderConfig]
     cache_ttl_seconds: int = 300
 
     model_config = SettingsConfigDict(extra="forbid")
 
     @property
-    def refresh_interval_seconds(self) -> int:
-        return self.refresh.interval_seconds
+    def fetch_models_interval(self) -> int:
+        return self.time.fetch_models_interval
 
     @property
-    def timeout_fetch_models_seconds(self) -> int:
-        return self.timeout.fetch_models_seconds
+    def fetch_models_timeout(self) -> int:
+        return self.time.fetch_models_timeout
 
     @property
-    def timeout_enrich_models_seconds(self) -> int:
-        return self.timeout.enrich_models_seconds
+    def enrich_models_timeout(self) -> int:
+        return self.time.enrich_models_timeout
 
     @classmethod
     def settings_customise_sources(

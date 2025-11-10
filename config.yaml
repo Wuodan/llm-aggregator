@@ -12,15 +12,15 @@ brain:
   # Maximum number of models to enrich in a single batch
   max_batch_size: 5
 
-refresh:
-  # Interval for refreshing the list of models from all providers
-  interval_seconds: 60
-
-timeout:
+time:
+  # Interval for fetching the list of models from all providers
+  fetch_models_interval: 60
   # Timeout for fetching models from providers
-  fetch_models_seconds: 10
+  fetch_models_timeout: 10
   # Timeout for enriching models
-  enrich_models_seconds: 60
+  enrich_models_timeout: 60
+  # for enrichment loop when queue is empty
+  enrich_idle_sleep: 5
 
 providers:
   - base_url: http://10.7.2.100

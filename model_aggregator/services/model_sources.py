@@ -23,7 +23,7 @@ async def _fetch_models_for_provider(
     settings = get_settings()
 
     try:
-        async with session.get(url, timeout=settings.timeout_fetch_models_seconds) as r:
+        async with session.get(url, timeout=settings.fetch_models_timeout) as r:
             if r.status >= 400:
                 text = await r.text()
                 logging.error(
