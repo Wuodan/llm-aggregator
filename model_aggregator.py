@@ -93,22 +93,20 @@ async def gather_models() -> List[Dict[str, Any]]:
 async def brain_call(prompt: str, systemPrompt: str) -> str:
     """Low-level helper to call brain and return stripped text."""
     try:
+        headers = {}
+        # Add Bearer API key only for port 8080 (others ignore it)
+        if ENRICH_PORT == 8080:
+            headers["Authorization"] = f"Bearer {ENRICH_MODEL_ID}"
+
         async with httpx.AsyncClient(timeout=20.0) as client:
             r = await client.post(
                 f"{MARVIN_HOST}:{ENRICH_PORT}/v1/chat/completions",
+                headers=headers,
                 json={
                     "model": ENRICH_MODEL_ID,
                     "messages": [
-                        {
-                            "role": "system",
-                            "content": (
-                                systemPrompt
-                            ),
-                        },
-                        {
-                            "role": "user",
-                            "content": prompt,
-                        },
+                        {"role": "system", "content": systemPrompt},
+                        {"role": "user", "content": prompt},
                     ],
                     "temperature": 0.2,
                 },
@@ -127,7 +125,8 @@ async def brain_call(prompt: str, systemPrompt: str) -> str:
         )
         if not isinstance(content, str):
             return ""
-        # First non-empty line is enough for our one-liner usage.
+
+        # Return first non-empty line for brevity
         for line in content.splitlines():
             line = line.strip()
             if line:
@@ -157,15 +156,15 @@ async def get_recommended_use(model_id: str) -> str:
         "Here are the model types and what they mean:\n\n"
         "| Type          | Full Name / Meaning          | Input → Output                   | Typical Use Case                          |\n"
         "|---------------|------------------------------|----------------------------------|-------------------------------------------|\n"
-        "| **llm**       | Large Language Model         | Text → Text                      | Chatbots, coding assistants, reasoning    |\n"
-        "| **vlm**       | Vision-Language Model        | Image + Text → Text              | Visual Q&A, captioning, multimodal agents |\n"
-        "| **embedder**  | Embedding Model              | Text → Vector (numeric array)    | Semantic search, retrieval, RAG           |\n"
-        "| **reranker**  | Reranking Model              | Query + Candidates → Ranked list | Improving search or RAG results           |\n"
-        "| **tts**       | Text-to-Speech               | Text → Audio                     | Generate spoken output, voice synthesis   |\n"
-        "| **asr**       | Automatic Speech Recognition | Audio → Text                     | Transcribe recordings or live speech      |\n"
-        "| **diarize**   | Speaker Diarization          | Audio → Speaker segments         | Detect who spoke when in audio            |\n"
-        "| **cv**        | Computer Vision              | Image → Labels / Features        | Object detection, classification          |\n"
-        "| **image_gen** | Image Generation             | Text → Image                     | Generative art, visual assistants         |\n"
+        "| llm           | Large Language Model         | Text → Text                      | Chatbots, coding assistants, reasoning    |\n"
+        "| vlm           | Vision-Language Model        | Image + Text → Text              | Visual Q&A, captioning, multimodal agents |\n"
+        "| embedder      | Embedding Model              | Text → Vector (numeric array)    | Semantic search, retrieval, RAG           |\n"
+        "| reranker      | Reranking Model              | Query + Candidates → Ranked list | Improving search or RAG results           |\n"
+        "| tts           | Text-to-Speech               | Text → Audio                     | Generate spoken output, voice synthesis   |\n"
+        "| asr           | Automatic Speech Recognition | Audio → Text                     | Transcribe recordings or live speech      |\n"
+        "| diarize       | Speaker Diarization          | Audio → Speaker segments         | Detect who spoke when in audio            |\n"
+        "| cv            | Computer Vision              | Image → Labels / Features        | Object detection, classification          |\n"
+        "| image_gen     | Image Generation             | Text → Image                     | Generative art, visual assistants         |\n"
     )
     prompt = (
         f"Model ID: {model_id}\n"
