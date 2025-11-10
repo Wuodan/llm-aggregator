@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 import time
 from typing import Any, Dict, List
 
@@ -8,7 +9,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from .config import CACHE_TTL
-from model_sources import gather_models
+from .model_sources import gather_models
 from .brain_client import enrich_models
 
 app = FastAPI()
@@ -83,5 +84,5 @@ async def api_models():
 
 
 # Serve ./static (index.html etc.) at /
-# Expect a sibling `static` directory when running the service.
-app.mount("/", StaticFiles(directory="static", html=True), name="static")
+# Expect the static directory relative to this file's directory
+app.mount("/", StaticFiles(directory=os.path.join(os.path.dirname(__file__), "static"), html=True), name="static")
