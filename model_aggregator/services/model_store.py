@@ -146,6 +146,20 @@ class ModelStore:
                 if m.key in self._models:
                     await self._enqueue_no_duplicate(m)
 
+    async def clear(self) -> None:
+        """Completely reset the in-memory store and queues."""
+        async with self._lock:
+            self._models.clear()
+            self._enriched.clear()
+            self._queued_keys.clear()
+            while not self._queue.empty():
+                try:
+                    self._queue.get_nowait()
+                except asyncio.QueueEmpty:
+                    break
+            self._last_update_ts = 0.0
+
+
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------

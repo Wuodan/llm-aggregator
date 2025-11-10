@@ -7,12 +7,18 @@
     body { font-family: system-ui, sans-serif; margin: 2em; }
     header {
       display: flex;
-      align-items: center;
+      align-items: flex-end;
       justify-content: space-between;
+      gap: 1em;
     }
     h1 {
       margin: 0;
       font-size: 1.8em;
+    }
+    #headerRight {
+      display: flex;
+      align-items: flex-end;
+      gap: 0.5em;
     }
     #ramBox {
       display: flex;
@@ -28,6 +34,11 @@
       width: 150px;
       height: 35px;
     }
+    #clearBtn {
+      font-size: 0.75em;
+      padding: 4px 8px;
+      cursor: pointer;
+    }
     #updated { font-size: 0.8em; color: #666; margin-bottom: 1em; }
     table { border-collapse: collapse; width: 100%; margin-top: 0.5em; }
     th, td { border-bottom: 1px solid #ddd; padding: 6px 8px; font-size: 0.9em; }
@@ -38,9 +49,12 @@
 <body>
 <header>
   <h1>LLM Catalog</h1>
-  <div id="ramBox">
-    <div id="ramLabel">RAM load %</div>
-    <canvas id="statsData"></canvas>
+  <div id="headerRight">
+    <div id="ramBox">
+      <div id="ramLabel">RAM load %</div>
+      <canvas id="statsData"></canvas>
+    </div>
+    <button id="clearBtn">🧹 Clear Data</button>
   </div>
 </header>
 
@@ -57,57 +71,10 @@
   <tbody></tbody>
 </table>
 
-<script>
-async function loadModels() {
-  const res = await fetch('/api/models');
-  const data = await res.json();
-  const rows = data.models || [];
-  const tbody = document.querySelector('#tbl tbody');
-  tbody.innerHTML = '';
-  rows.forEach(row => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${row.id || ''}</td>
-      <td>${row.server_port || ''}</td>
-      <td>${Array.isArray(row.types) ? row.types.join(', ') : (row.types || '')}</td>
-      <td>${row.summary || ''}</td>`;
-    tbody.appendChild(tr);
-  });
-  document.getElementById('tbl').style.display = rows.length ? '' : 'none';
-  document.getElementById('updated').textContent =
-    'Last update: ' + new Date().toLocaleTimeString();
-}
-loadModels();
-setInterval(loadModels, 10000);
+<!-- FastAPI fills this with the proper API base URL -->
+<script id="apiBaseScript" data-api-base=""></script>
 
-
-const ctx = document.getElementById('statsData').getContext('2d');
-const statsData = new Chart(ctx, {
-  type: 'line',
-  data: { labels: [], datasets: [{
-    data: [], borderWidth: 1, borderColor: '#0077cc',
-    backgroundColor: 'rgba(0,119,204,0.15)', tension: 0.3, fill: true, pointRadius: 0
-  }]},
-  options: {
-    animation: false,
-    scales: { x: { display: false }, y: { display: false, min: 0, max: 100 } },
-    plugins: { legend: { display: false }, tooltip: { enabled: false } },
-    elements: { line: { borderJoinStyle: 'round' } }
-  }
-});
-
-async function refreshStats() {
-  try {
-    const res = await fetch('/api/stats');
-    const data = await res.json();
-    statsData.data.labels = data.map((_, i) => i);
-    statsData.data.datasets[0].data = data;
-    statsData.update();
-  } catch (e) { console.warn('Stats chart fetch failed', e); }
-}
-setInterval(refreshStats, 5000);
-refreshStats();
-
-</script>
+<!-- Main logic bundle -->
+<script src="/static/main.js"></script>
 </body>
 </html>
