@@ -30,6 +30,8 @@ class Settings:
     cache_ttl_seconds: int
     refresh_interval_seconds: int
     enrichment: EnrichmentConfig
+    timeout_fetch_models_seconds: int
+    timeout_enrich_models_seconds: int
 
 
 _settings: Optional[Settings] = None
@@ -91,6 +93,16 @@ def _parse_settings(raw: dict) -> Settings:
     if not isinstance(max_batch_size, int) or max_batch_size <= 0:
         raise ValueError("'enrichment.max_batch_size' must be a positive integer")
 
+    timeout_cfg = raw.get("timeout") or {}
+    if not isinstance(timeout_cfg, dict):
+        raise ValueError("'timeout' must be a mapping if provided")
+    timeout_fetch_models_seconds = timeout_cfg.get("fetch_models_seconds", 10)
+    if not isinstance(timeout_fetch_models_seconds, int) or timeout_fetch_models_seconds <= 0:
+        raise ValueError("'timeout.fetch_models_seconds' must be a positive integer")
+    timeout_enrich_models_seconds = timeout_cfg.get("enrich_models_seconds", 60)
+    if not isinstance(timeout_enrich_models_seconds, int) or timeout_enrich_models_seconds <= 0:
+        raise ValueError("'timeout.enrich_models_seconds' must be a positive integer")
+
     enrichment = EnrichmentConfig(
         model_id=model_id,
         port=enrich_port,
@@ -104,6 +116,8 @@ def _parse_settings(raw: dict) -> Settings:
         cache_ttl_seconds=cache_ttl_seconds,
         refresh_interval_seconds=refresh_interval_seconds,
         enrichment=enrichment,
+        timeout_fetch_models_seconds=timeout_fetch_models_seconds,
+        timeout_enrich_models_seconds=timeout_enrich_models_seconds,
     )
 
 

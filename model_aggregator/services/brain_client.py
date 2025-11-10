@@ -47,12 +47,6 @@ async def enrich_batch(models: List[ModelInfo]) -> List[EnrichedModel]:
     system_prompt = (
         "You are a strict JSON generator that analyzes a list of models and returns "
         "concise metadata.\n"
-        "Only respond with a single JSON object, no markdown, no extra text."
-    )
-
-    system_prompt = (
-        "You are a strict JSON generator that analyzes a list of models and returns "
-        "concise metadata.\n"
         "Only respond with a single JSON object, no markdown, no extra text.\n\n"
         "## LLM Model Types"
         "For your knowledge here are LLM model types and what they mean:\n\n"
@@ -118,7 +112,7 @@ async def enrich_batch(models: List[ModelInfo]) -> List[EnrichedModel]:
 
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.post(url, headers=headers, json=payload, timeout=60) as r:
+            async with session.post(url, headers=headers, json=payload, timeout=settings.timeout_enrich_models_seconds) as r:
                 if r.status >= 400:
                     text = await r.text()
                     logging.error(

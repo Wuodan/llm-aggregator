@@ -24,3 +24,9 @@ enrichment:
   use_bearer_model_id: true
   # Maximum number of models to enrich in a single batch
   max_batch_size: 5
+
+timeout:
+  # Timeout for fetching models from providers
+  fetch_models_seconds: 10
+  # Timeout for enriching models
+  enrich_models_seconds: 60

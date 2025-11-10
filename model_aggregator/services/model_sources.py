@@ -20,9 +20,10 @@ async def _fetch_models_for_provider(
     """
     url = f"{provider.base_endpoint}/v1/models"
     port = provider.port
+    settings = get_settings()
 
     try:
-        async with session.get(url, timeout=10) as r:
+        async with session.get(url, timeout=settings.timeout_fetch_models_seconds) as r:
             if r.status >= 400:
                 text = await r.text()
                 logging.error(
