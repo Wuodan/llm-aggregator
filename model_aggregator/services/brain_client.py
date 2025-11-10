@@ -50,17 +50,17 @@ async def enrich_batch(models: List[ModelInfo]) -> List[EnrichedModel]:
         "Only respond with a single JSON object, no markdown, no extra text."
     )
 
+    # models = json.dumps(input_models[:15])
+    models = json.dumps(input_models)
+
     user_prompt = (
-        "Given the following JSON array 'models', generate metadata for each model.\n"
-        "Input 'models': "
-        + json.dumps(input_models, ensure_ascii=False)
-        + "\n"
+        "Given the following JSON array 'models', generate detailed metadata for each model.\n"
+        "\n"
         "Return EXACTLY this JSON structure and nothing else:\n"
         "{\n"
         "  \"enriched\": [\n"
         "    {\n"
         "      \"model\": \"<exact id from input>\",\n"
-        "      \"server_port\": <port from input>,\n"
         "      \"summary\": \"<very short description of this specific model>\",\n"
         "      \"types\": [\"llm\" | \"vlm\" | \"embedder\" | \"reranker\" | \"tts\" | \"asr\" | \"diarize\" | \"cv\" | \"image_gen\"],\n"
         "      \"recommended_use\": \"<1 concise sentence with recommended use cases>\",\n"
@@ -69,7 +69,14 @@ async def enrich_batch(models: List[ModelInfo]) -> List[EnrichedModel]:
         "    ... one entry per input model, in the same order ...\n"
         "  ]\n"
         "}\n"
-        "Do not skip any models and do not add new ones."
+        "Rules:\n"
+        "- Include EVERY input model exactly once.\n"
+        "- Use ONLY the allowed type tokens.\n"
+        "- Keep summaries and recommended_use concise.\n"
+        "- Never add extra top-level keys.\n"
+        "- Never wrap your answer in markdown.\n"
+        "\n"
+        "Input 'models' follow (JSON array):\n"
     )
 
     url = f"{settings.marvin_host}:{enrich_cfg.port}/v1/chat/completions"
@@ -86,6 +93,7 @@ async def enrich_batch(models: List[ModelInfo]) -> List[EnrichedModel]:
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
+            {"role": "user", "content": models}
         ],
         "temperature": 0.2,
     }

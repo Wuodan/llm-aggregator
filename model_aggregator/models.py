@@ -28,7 +28,7 @@ class EnrichmentConfig:
     model_id: str
     port: int
     use_bearer_model_id: bool = True
-    max_batch_size: int = 15
+    max_batch_size: int = 1
 
 
 @dataclass(frozen=True)
