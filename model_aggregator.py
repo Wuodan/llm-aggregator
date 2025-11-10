@@ -150,7 +150,7 @@ async def get_summary(model_id: str) -> str:
     return await brain_call(prompt, systemPrompt)
 
 
-async def get_recommended_use(model_id: str) -> str:
+```async def get_types(model_id: str) -> str:
     systemPrompt = (
         "## Model Types\n\n"
         "Here are the model types and what they mean:\n\n"
@@ -168,12 +168,12 @@ async def get_recommended_use(model_id: str) -> str:
     )
     prompt = (
         f"Model ID: {model_id}\n"
-        "From the model types, list the types that best matches this model.\n"
-        "Do not add any more text (no prefix, no sentence before or after) than those types.\n"
-        "I repeat: the only words allowed are those types.\n"
-        "Good example: llm vlm\n"
-        "Bad example 1: This model is a llm and vlm.\n"
-        "Bad example 2: Here are the model types that best match \"Model ID: TinyLlama_Chat\""
+        "You are a classifier that outputs only valid model type tokens.\n"
+        "Allowed tokens are only the model types from the model table.\n"
+        "Rules:\n"
+        "- Reply with one or more tokens separated by a single space.\n"
+        "- Do not include punctuation, bullets, colons, or extra words.\n"
+        "- If no type fits, reply with an empty line."
     )
     return await brain_call(prompt, systemPrompt)
 
@@ -217,7 +217,7 @@ async def enrich_missing_once() -> None:
 
         summary = current.get("summary") or await get_summary(mid)
         await asyncio.sleep(ENRICH_DELAY)
-        recommended = current.get("recommended_use") or await get_recommended_use(mid)
+        recommended = current.get("recommended_use") or await get_types(mid)
         await asyncio.sleep(ENRICH_DELAY)
 
         enriched_by_model[mid] = {
@@ -277,6 +277,13 @@ async def refresh_cache_models_only() -> None:
     """
     logging.info("Refreshing models list (models-only)")
     models = await gather_models()
+    # sort by port, then by model id
+    models.sort(
+        key=lambda m: (
+            m.get("server_port", 0),
+            str(m.get("id", "")).lower(),
+        )
+    )
     enriched_snapshot = build_enriched_snapshot(models)
     cache["data"] = {"models": models, "enriched": enriched_snapshot}
     cache["ts"] = time.time()
