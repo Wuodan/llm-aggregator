@@ -10,6 +10,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .config import get_settings
 from .services.model_store import ModelStore
+from .services.stats_collector import stats_history
 from .services.tasks import BackgroundTasksManager
 
 # Initialize core components once at import time
@@ -46,6 +47,11 @@ async def api_models():
     """
     snapshot = await store.get_snapshot()
     return JSONResponse({"models": snapshot})
+
+@app.get("/api/stats")
+def get_stats():
+    return JSONResponse(list(stats_history))
+
 
 
 # Serve ./static (index.html etc.) at /

@@ -1,7 +1,7 @@
 aiohttp
 fastapi
 httpx
+psutil
 pydantic
-# pydantic-settings
 pyyaml
 uvicorn
