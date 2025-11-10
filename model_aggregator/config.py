@@ -12,7 +12,7 @@ from pydantic_settings import (
     YamlConfigSettingsSource,
 )
 
-from .models import ProviderConfig, EnrichmentConfig
+from .models import ProviderConfig, BrainConfig
 
 CONFIG_ENV_VAR = "LLM_AGGREGATOR_CONFIG"
 DEFAULT_CONFIG_PATH = Path(__file__).resolve().parent.parent / "config.yaml"
@@ -28,11 +28,10 @@ class TimeoutConfig(BaseModel):
 
 
 class Settings(BaseSettings):
-    brain_host: str
     providers: List[ProviderConfig]
     cache_ttl_seconds: int = 300
     refresh: RefreshConfig = RefreshConfig()
-    enrichment: EnrichmentConfig
+    brain: BrainConfig
     timeout: TimeoutConfig = TimeoutConfig()
 
     model_config = SettingsConfigDict(extra="forbid")

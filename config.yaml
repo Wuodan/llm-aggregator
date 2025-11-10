@@ -1,7 +1,6 @@
 # LLM Aggregator configuration
 # All runtime behavior should be driven from here, not hard-coded in code.
 
-brain_host: "http://10.7.2.100"
 
 providers:
   - base_url: http://10.7.2.100
@@ -18,11 +17,12 @@ refresh:
   # Interval for refreshing the list of models from all providers
   interval_seconds: 60
 
-enrichment:
-  # Model used by the brain to enrich model metadata
-  model_id: "unsloth/GLM-4.6-GGUF:UD-IQ2_XXS"
+brain:
+  host: "http://10.7.2.100"
   # Port of the provider where the enrichment model is hosted
   port: 8080
+  # Model used by the brain to enrich model metadata
+  model_id: "unsloth/GLM-4.6-GGUF:UD-IQ2_XXS"
   # If true, send Authorization: Bearer <model_id> for calls to this port
   use_bearer_model_id: true
   # Maximum number of models to enrich in a single batch

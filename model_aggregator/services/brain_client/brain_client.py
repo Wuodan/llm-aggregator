@@ -23,7 +23,7 @@ async def enrich_batch(models: List[ModelInfo]) -> List[EnrichedModel]:
         return []
 
     settings = get_settings()
-    enrich_cfg = settings.enrichment
+    enrich_cfg = settings.brain
 
     # Build prompt input: minimal but deterministic
     input_models = [
@@ -37,7 +37,7 @@ async def enrich_batch(models: List[ModelInfo]) -> List[EnrichedModel]:
     # IMPORTANT: don't overwrite `models` (the list of ModelInfo)!
     models_json = json.dumps(input_models, ensure_ascii=False)
 
-    url = f"{settings.brain_host}:{enrich_cfg.port}/v1/chat/completions"
+    url = f"{settings.brain.host}:{enrich_cfg.port}/v1/chat/completions"
 
     headers = {
         "Content-Type": "application/json",

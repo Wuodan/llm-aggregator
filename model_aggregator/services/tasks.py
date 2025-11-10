@@ -5,10 +5,10 @@ import logging
 from typing import List, Optional
 
 from .brain_client.brain_client import enrich_batch
+from .model_sources import gather_models
+from .model_store import ModelStore
 from ..config import get_settings
 from ..models import ModelInfo, EnrichedModel
-from .model_store import ModelStore
-from .model_sources import gather_models
 
 
 class BackgroundTasksManager:
@@ -70,7 +70,7 @@ class BackgroundTasksManager:
         async def enrichment_loop() -> None:
             logging.info("Background enrichment loop started")
             settings_inner = get_settings()
-            max_batch = int(settings_inner.enrichment.max_batch_size)
+            max_batch = int(settings_inner.brain.max_batch_size)
             idle_sleep = 5.0 # for enrichment loop when queue is empty
 
             try:

@@ -22,11 +22,12 @@ class ProviderConfig:
 
 
 @dataclass(frozen=True)
-class EnrichmentConfig:
+class BrainConfig:
     """Configuration for the enrichment (brain) LLM endpoint."""
 
-    model_id: str
+    host: str
     port: int
+    model_id: str
     use_bearer_model_id: bool = True
     max_batch_size: int = 1
 
