@@ -6,8 +6,8 @@ from typing import List
 
 from model_aggregator.models import ModelInfo, EnrichedModel
 from model_aggregator.services.brain_client._const import ENRICH_SYSTEM_PROMPT, ENRICH_USER_PROMPT
-from model_aggregator.services.brain_client._map_enrich_result import _map_enrich_result
 from model_aggregator.services.brain_client.brain_client import chat_completions
+from model_aggregator.services.enrich_model._map_enrich_result import _map_enrich_result
 from ._extract_json_object import _extract_json_object
 
 
