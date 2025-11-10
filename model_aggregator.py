@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import asyncio
 import json
+import logging
 import time
 
 import aiohttp
@@ -13,6 +14,11 @@ MARVIN_HOST = "http://10.7.2.100"
 PORTS = [8080, 8090, 11434]
 CACHE_TTL = 300  # seconds
 
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+
 app = FastAPI()
 cache = {"data": None, "ts": 0}
 
@@ -23,7 +29,9 @@ async def fetch_models(session, port: int):
         async with session.get(url, timeout=10) as r:
             j = await r.json()
             models = j.get("data", j)
-    except Exception:
+        logging.info(f"Successfully fetched {len(models)} models from port {port}")
+    except Exception as e:
+        logging.warning(f"Failed to fetch models from port {port}: {e}")
         models = []
     for m in models:
         m["server_port"] = port
@@ -36,12 +44,14 @@ async def gather_models():
     all_models = []
     for group in results:
         all_models.extend(group)
+    logging.info(f"Gathered {len(all_models)} models from all ports")
     return all_models
 
 
 async def enrich(models):
     """Use one local model to generate JSON with metadata & recommendations."""
     if not models:
+        logging.info("No models to enrich")
         return []
 
     model_ids = [m["id"] for m in models]
@@ -57,7 +67,7 @@ async def enrich(models):
     try:
         async with httpx.AsyncClient(timeout=60.0) as c:
             r = await c.post(
-                f"{MARVIN_HOST}:8080/v1/chat/completions",
+                f"{MARVIN_HOST}:8090/v1/chat/completions",
                 json={
                     "model": "NexaAI/gemma-3n-E2B-it-4bit-MLX",
                     "messages": [{"role": "user", "content": prompt}],
@@ -67,22 +77,28 @@ async def enrich(models):
         content = r.json()["choices"][0]["message"]["content"]
         data = json.loads(content)
         if isinstance(data, list):
+            logging.info(f"Successfully enriched {len(data)} models")
             return data
-    except Exception:
-        pass
+        else:
+            logging.warning("Enrichment returned non-list data")
+    except Exception as e:
+        logging.error(f"Failed to enrich models: {e}")
 
     return []
 
 
 async def refresh_cache():
+    logging.info("Starting cache refresh")
     models = await gather_models()
     enriched = await enrich(models)
     cache["data"] = {"models": models, "enriched": enriched}
     cache["ts"] = time.time()
+    logging.info(f"Cache refreshed with {len(models)} models and {len(enriched)} enriched entries")
 
 
 @app.on_event("startup")
 async def startup_event():
+    logging.info("Application startup: starting background cache refresh loop")
     async def loop():
         while True:
             await refresh_cache()
@@ -90,12 +106,16 @@ async def startup_event():
 
     asyncio.create_task(loop())
     await refresh_cache()  # initial fill
+    logging.info("Initial cache refresh completed on startup")
 
 
 @app.get("/api/models")
 async def api_models():
-    if cache["data"] and time.time() - cache["ts"] < CACHE_TTL:
+    elapsed = time.time() - cache["ts"] if cache["ts"] else float('inf')
+    if cache["data"] and elapsed < CACHE_TTL:
+        logging.info(f"Cache hit: serving data ({elapsed:.1f}s since refresh)")
         return JSONResponse(cache["data"])
+    logging.info("Cache miss: refreshing cache")
     await refresh_cache()
     return JSONResponse(cache["data"])
 
