@@ -4,5 +4,6 @@ fastapi
 httpx
 psutil
 pydantic
+pydantic_settings
 pyyaml
 uvicorn
