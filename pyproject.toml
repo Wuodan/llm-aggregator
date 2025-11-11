@@ -1,0 +1,7 @@
+[project]
+name = "llm-aggregator"
+version = "0.1.0"
+dependencies = []
+
+[project.scripts]
+routheon-server = "llm_aggregator.cli:main"
