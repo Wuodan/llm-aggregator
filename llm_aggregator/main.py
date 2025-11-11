@@ -8,7 +8,7 @@ import uvicorn
 def main() -> None:
     """Run the LLM Aggregator API server.
 
-    Uses the FastAPI app defined in ``model_aggregator.api:app``.
+    Uses the FastAPI app defined in ``llm_aggregator.api:app``.
     """
     # Basic logging config; detailed config is also applied in api.lifespan
     logging.basicConfig(
@@ -17,7 +17,7 @@ def main() -> None:
     )
 
     uvicorn.run(
-        "model_aggregator.api:app",
+        "llm_aggregator.api:app",
         host="0.0.0.0",
         port=8888,
         reload=False,

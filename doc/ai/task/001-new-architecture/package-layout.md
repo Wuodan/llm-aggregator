@@ -1,7 +1,7 @@
 # Package Layout for llm-aggregator
 
 ```
-model_aggregator/
+llm_aggregator/
 ├── __init__.py
 ├── __main__.py
 ├── main.py              # app factory + uvicorn entry

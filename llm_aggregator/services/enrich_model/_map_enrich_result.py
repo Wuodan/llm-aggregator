@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from model_aggregator.models import ModelKey, EnrichedModel
+from llm_aggregator.models import ModelKey, EnrichedModel
 
 _ALLOWED_TYPES = {
     "llm",

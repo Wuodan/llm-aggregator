@@ -4,7 +4,7 @@ import logging
 
 import aiohttp
 
-from model_aggregator.config import get_settings
+from llm_aggregator.config import get_settings
 
 
 async def chat_completions(payload: dict[str, str | list[dict[str, str]] | float]) -> str|None:
