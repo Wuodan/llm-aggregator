@@ -18,7 +18,7 @@ time:
   # Timeout for fetching models from providers
   fetch_models_timeout: 10
   # Timeout for enriching models
-  enrich_models_timeout: 60
+  enrich_models_timeout: 120
   # for enrichment loop when queue is empty
   enrich_idle_sleep: 5
 

@@ -111,8 +111,8 @@
     initChart();
     loadModels();
     refreshStats();
-    setInterval(loadModels, 10000);
-    setInterval(refreshStats, 5000);
+    setInterval(loadModels, 20000);
+    setInterval(refreshStats, 10000);
 
     if (clearBtn) clearBtn.addEventListener('click', clearData);
   }
