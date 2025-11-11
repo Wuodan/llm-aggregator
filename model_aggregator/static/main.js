@@ -52,12 +52,16 @@
         const tr = document.createElement('tr');
         tr.innerHTML = [
           '<td>' + (row.id || '') + '</td>',
-          '<td>' + (row.server_port || '') + '</td>',
+          '<td>' + (row.port || '') + '</td>',
           '<td>' + (
             Array.isArray(row.types)
               ? row.types.join(', ')
               : (row.types || '')
           ) + '</td>',
+          '<td>' + (row.model_family || '') + '</td>',
+          '<td>' + (row.context_size || '') + '</td>',
+          '<td>' + (row.quant || '') + '</td>',
+          '<td>' + (row.param || '') + '</td>',
           '<td>' + (row.summary || '') + '</td>'
         ].join('');
         tbody.appendChild(tr);
@@ -89,14 +93,13 @@
   }
 
   async function clearData() {
-    if (!confirm('Clear all model data?')) return;
+    if (!confirm('Try it!\nWatch AI recreate the info!')) return;
     try {
       const res = await fetch(apiBase + '/api/clear', { method: 'POST' });
       if (!res.ok) {
         alert('Failed to clear data (' + res.status + ')');
         return;
       }
-      sleep(4000);
       await loadModels();
     } catch (err) {
       console.error('Error clearing data', err);

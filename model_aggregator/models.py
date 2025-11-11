@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Any, Dict, List
+from dataclasses import dataclass
+from typing import Any, Dict
 
 
 @dataclass(frozen=True)
@@ -46,11 +46,11 @@ class ProviderConfig:
 class ModelKey:
     """Stable identifier for a model in this system.
 
-    We currently key by (server_port, model-id), which is sufficient as long as
+    We currently key by (port, model-id), which is sufficient as long as
     each port exposes a unique model ID namespace.
     """
 
-    server_port: int
+    port: int
     # Model ID
     id: str
 
@@ -59,6 +59,13 @@ class ModelKey:
         """Return the raw model id used in API payloads."""
         return self.id
 
+    def to_api_dict(self) -> Dict[str, Any]:
+        """Return the shape expected in the public /api/models 'models' list."""
+        return {
+            "id": self.id,
+            "port": self.port,
+        }
+
 
 @dataclass
 class ModelInfo:
@@ -66,7 +73,7 @@ class ModelInfo:
 
     Attributes:
         key:   Unique ModelKey (port + model id).
-        raw:   Original /v1/models entry merged with server_port information.
+        raw:   Original /v1/models entry merged with port information.
     """
 
     key: ModelKey
@@ -77,10 +84,10 @@ class ModelInfo:
 
         This keeps the external contract compatible with the existing frontend.
         """
-        # Ensure id + server_port are present at top-level.
+        # Ensure id + port are present at top-level.
         data = dict(self.raw)
         data.setdefault("id", self.key.id)
-        data.setdefault("server_port", self.key.server_port)
+        data.setdefault("port", self.key.port)
         return data
 
 
@@ -92,14 +99,11 @@ class EnrichedModel:
     """
 
     key: ModelKey
-    summary: str = ""
-    types: List[str] = field(default_factory=list)
+    enriched: Dict[str, Any] | None = None
 
     def to_api_dict(self) -> Dict[str, Any]:
         """Return the shape expected in the public /api/models 'enriched' list."""
-        return {
-            "model": self.key.id,
-            "server_port": self.key.server_port,
-            "summary": self.summary,
-            "types": list(self.types),
-        }
+        base = self.key.to_api_dict()
+        if self.enriched is not None:
+                    base = {**base, **self.enriched}
+        return base

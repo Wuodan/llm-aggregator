@@ -24,7 +24,7 @@ async def enrich_batch(models: List[ModelInfo]) -> List[EnrichedModel]:
     input_models = [
         {
             "id": m.key.id,
-            "server_port": m.key.server_port,
+            "port": m.key.port,
         }
         for m in models
     ]
@@ -43,9 +43,9 @@ async def enrich_batch(models: List[ModelInfo]) -> List[EnrichedModel]:
 
     enriched_list = await _get_enriched_list(payload)
 
-    # Map by (model, server_port) for safety
+    # Map by (model, port) for safety
     input_keys = {
-        (m.key.id, m.key.server_port): m.key for m in models
+        (m.key.id, m.key.port): m.key for m in models
     }
 
     result = await _map_enrich_result(input_keys, enriched_list)
