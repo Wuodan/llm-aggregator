@@ -18,6 +18,8 @@ DEFAULT_CONFIG_PATH = Path(__file__).resolve().parent.parent / "config.yaml"
 
 
 class Settings(BaseSettings):
+    host: str
+    port: int
     brain: BrainConfig
     time: TimeConfig
     providers: List[ProviderConfig]

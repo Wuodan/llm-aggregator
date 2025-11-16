@@ -4,6 +4,8 @@ import logging
 
 import uvicorn
 
+from llm_aggregator.config import get_settings
+
 
 def main() -> None:
     """Run the LLM Aggregator API server.
@@ -13,13 +15,15 @@ def main() -> None:
     # Basic logging config; detailed config is also applied in api.lifespan
     logging.basicConfig(
         level=logging.INFO,
-        format="%(asctime)s - %(levelname)s - %(message)s",
+        format="%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s",
     )
+
+    settings = get_settings()
 
     uvicorn.run(
         "llm_aggregator.api:app",
-        host="0.0.0.0",
-        port=8888,
+        host=settings.host,
+        port=settings.port,
         reload=False,
     )
 

@@ -1,6 +1,9 @@
 # LLM Aggregator configuration
 # All runtime behavior should be driven from here, not hard-coded in code.
 
+host: "0.0.0.0"
+port: 8888
+
 brain:
   host: "http://10.7.2.100"
   # Port of the provider where the enrichment model is hosted
