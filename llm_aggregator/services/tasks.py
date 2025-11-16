@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from typing import List, Optional
 
 from .enrich_model.enrich_model import enrich_batch
@@ -79,6 +80,7 @@ class BackgroundTasksManager:
                             else:
                                 # brain returned nothing -> requeue to retry later
                                 await self._store.requeue_models(batch)
+                                time.sleep(5)
                         except Exception as e:
                             logging.error("Brain enrichment failed: %r", e)
                             await self._store.requeue_models(batch)
