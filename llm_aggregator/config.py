@@ -21,7 +21,6 @@ class Settings(BaseSettings):
     brain: BrainConfig
     time: TimeConfig
     providers: List[ProviderConfig]
-    cache_ttl_seconds: int = 300
 
     model_config = SettingsConfigDict(extra="forbid")
 
