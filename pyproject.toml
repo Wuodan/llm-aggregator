@@ -1,7 +1,39 @@
+[build-system]
+requires = ["hatchling>=1.18", "hatch-vcs"]
+build-backend = "hatchling.build"
+
 [project]
 name = "llm-aggregator"
-version = "0.1.0"
-dependencies = []
+description = "A model aggregator service for multiple LLM backends."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+dependencies = [
+    "aiohttp",
+    "apscheduler",
+    "fastapi",
+    "httpx",
+    "psutil",
+    "pydantic",
+    "pydantic_settings",
+    "pyyaml",
+    "uvicorn"
+]
+dynamic = ["version"]
+
+[project.urls]
+Homepage = "https://github.com/Wuodan/llm-aggregator"
+Repository = "https://github.com/Wuodan/llm-aggregator"
+Issues = "https://github.com/Wuodan/llm-aggregator/issues"
 
 [project.scripts]
-routheon-server = "llm_aggregator.cli:main"
+llm-aggregator = "llm_aggregator.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["llm_aggregator"]
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "llm_aggregator/_version.py"
