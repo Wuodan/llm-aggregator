@@ -7,8 +7,8 @@ brain:
   port: 8080
   # Model used by the brain to enrich model metadata
   id: "unsloth/GLM-4.6-GGUF:UD-IQ2_XXS"
-  # If true, send Authorization: Bearer <model-id> for calls to this port
-  use_bearer_model: true
+  # If set, send Authorization: Bearer <API-KEY> for calls to this port
+  api_key: "unsloth/GLM-4.6-GGUF:UD-IQ2_XXS"
   # Maximum number of models to enrich in a single batch
   max_batch_size: 5
 

@@ -15,9 +15,9 @@ async def chat_completions(payload: dict[str, str | list[dict[str, str]] | float
     headers:dict[str, str] = {
         "Content-Type": "application/json",
     }
-    if settings.brain.use_bearer_model:
+    if settings.brain.api_key:
         # For brain backend: bearer token equals model id
-        headers["Authorization"] = f"Bearer {settings.brain.id}"
+        headers["Authorization"] = f"Bearer {settings.brain.api_key}"
 
     payload["model"] = settings.brain.id
 

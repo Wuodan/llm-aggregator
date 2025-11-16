@@ -12,7 +12,7 @@ class BrainConfig:
     port: int
     # The model-id
     id: str
-    use_bearer_model: bool = True
+    api_key: str|None = None
     max_batch_size: int = 1
 
 
