@@ -6,4 +6,4 @@ psutil
 pydantic
 pydantic_settings
 pyyaml
-uvicorn
+uvicorn[standard]
