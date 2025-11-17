@@ -35,7 +35,12 @@ pip install llm-aggregator
 
 ## Configuration
 
-The service is configured via `config.yaml` in the project root. 
+Set the `LLM_AGGREGATOR_CONFIG` environment variable to point at your `config.yaml` and the service will load it on startup:
+
+```bash
+export LLM_AGGREGATOR_CONFIG=/path/to/config.yaml
+llm-aggregator
+```
 
 ### Configuration Options
 

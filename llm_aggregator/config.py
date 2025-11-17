@@ -14,7 +14,6 @@ from pydantic_settings import (
 from .models import ProviderConfig, BrainConfig, TimeConfig
 
 CONFIG_ENV_VAR = "LLM_AGGREGATOR_CONFIG"
-DEFAULT_CONFIG_PATH = Path(__file__).resolve().parent.parent / "config.yaml"
 
 
 class Settings(BaseSettings):
@@ -47,8 +46,7 @@ class Settings(BaseSettings):
         dotenv_settings: PydanticBaseSettingsSource,
         file_secret_settings: PydanticBaseSettingsSource,
     ) -> Tuple[PydanticBaseSettingsSource, ...]:
-        cfg_path_env = os.getenv(CONFIG_ENV_VAR)
-        yaml_path = Path(cfg_path_env) if cfg_path_env else DEFAULT_CONFIG_PATH
+        yaml_path = _resolve_config_path()
 
         return (
             init_settings,
@@ -67,3 +65,16 @@ def get_settings() -> Settings:
     if _settings is None:
         _settings = Settings()
     return _settings
+
+
+def _resolve_config_path() -> Path:
+    cfg_path_env = os.getenv(CONFIG_ENV_VAR)
+    if not cfg_path_env:
+        raise RuntimeError(
+            f"{CONFIG_ENV_VAR} is not set. Please point it to your config.yaml file."
+        )
+
+    yaml_path = Path(cfg_path_env).expanduser()
+    if not yaml_path.is_file():
+        raise FileNotFoundError(f"Config file {yaml_path} does not exist")
+    return yaml_path

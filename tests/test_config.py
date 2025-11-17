@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import textwrap
 
+import pytest
+
 from llm_aggregator import config as config_module
 from llm_aggregator.config import CONFIG_ENV_VAR
 
@@ -42,3 +44,23 @@ def test_settings_load_from_custom_yaml(tmp_path, monkeypatch):
 
     # Cached object is reused to avoid re-parsing.
     assert config_module.get_settings() is settings
+
+
+def test_missing_config_env_var_raises(monkeypatch):
+    monkeypatch.delenv(CONFIG_ENV_VAR, raising=False)
+    config_module._settings = None
+    try:
+        with pytest.raises(RuntimeError):
+            config_module.get_settings()
+    finally:
+        config_module._settings = None
+
+
+def test_missing_config_file_raises(monkeypatch):
+    monkeypatch.setenv(CONFIG_ENV_VAR, "/tmp/does-not-exist-config.yaml")
+    config_module._settings = None
+    try:
+        with pytest.raises(FileNotFoundError):
+            config_module.get_settings()
+    finally:
+        config_module._settings = None

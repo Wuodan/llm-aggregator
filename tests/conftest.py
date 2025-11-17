@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -12,12 +13,14 @@ import pytest
 from llm_aggregator import config as config_module
 from llm_aggregator.config import CONFIG_ENV_VAR
 
-# Ensure the project package (llm_aggregator) is importable when running tests
+DEFAULT_TEST_CONFIG = ROOT / "config.yaml"
+os.environ.setdefault(CONFIG_ENV_VAR, str(DEFAULT_TEST_CONFIG))
+
 
 @pytest.fixture(autouse=True)
 def _reset_cached_settings(monkeypatch):
     """Provide isolated config state for every test."""
-    monkeypatch.delenv(CONFIG_ENV_VAR, raising=False)
+    monkeypatch.setenv(CONFIG_ENV_VAR, str(DEFAULT_TEST_CONFIG))
     config_module._settings = None
     try:
         yield
