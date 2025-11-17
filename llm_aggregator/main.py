@@ -12,13 +12,19 @@ def main() -> None:
 
     Uses the FastAPI app defined in ``llm_aggregator.api:app``.
     """
-    # Basic logging config; detailed config is also applied in api.lifespan
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s",
+    settings = get_settings()
+
+    log_level = (
+        settings.log_level.upper()
+        if isinstance(settings.log_level, str)
+        else settings.log_level
     )
 
-    settings = get_settings()
+    # Basic logging config; detailed config is also applied in api.lifespan
+    logging.basicConfig(
+        level=log_level,
+        format="%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s",
+    )
 
     uvicorn.run(
         "llm_aggregator.api:app",

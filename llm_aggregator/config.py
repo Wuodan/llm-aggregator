@@ -21,6 +21,7 @@ CONFIG_ENV_VAR = "LLM_AGGREGATOR_CONFIG"
 class Settings(BaseSettings):
     host: str
     port: int
+    log_level: str = "INFO"
     brain: BrainConfig
     time: TimeConfig
     providers: List[ProviderConfig]

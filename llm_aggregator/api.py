@@ -23,10 +23,6 @@ tasks_manager = BackgroundTasksManager(store)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan: start/stop background tasks around FastAPI."""
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(levelname)s - %(message)s",
-    )
     logging.info("Starting LLM Aggregator app")
     await tasks_manager.start()
     try:
