@@ -54,7 +54,6 @@ def get_stats():
 @app.post("/api/clear")
 async def clear_data():
     """Clear/wipe all model-related data (adapt to your ModelStore API)."""
-    # Implement this in your ModelStore (e.g. reset caches, enrichment, etc.)
     await tasks_manager.restart()
     return JSONResponse({"status": "cleared"})
 
@@ -63,8 +62,16 @@ async def clear_data():
 
 static_dir = Path(os.path.dirname(__file__)) / "static"
 
-# Serve assets at /static (main.js, css, etc.)
-app.mount("/static", StaticFiles(directory=static_dir), name="static")
+
+class NoCacheStaticFiles(StaticFiles):
+    async def get_response(self, path, scope):
+        response = await super().get_response(path, scope)
+        response.headers["Cache-Control"] = "no-cache"
+        return response
+
+
+# Serve assets at /static (main.js, css, etc.) with no-cache
+app.mount("/static", NoCacheStaticFiles(directory=static_dir), name="static")
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -73,19 +80,23 @@ async def serve_index(request: Request):
     html_path = static_dir / "index.html"
     html = html_path.read_text(encoding="utf-8")
 
-    # 1) If you add `api_base_url` to your config, that wins.
     api_base = getattr(settings, "api_base_url", None)
-
-    # 2) Otherwise: build it from the incoming request (works behind proxy if Host is set)
     if not api_base:
         scheme = request.url.scheme
         host = request.headers.get("host") or f"{request.client.host}"
         api_base = f"{scheme}://{host}"
 
-    # Fill the placeholder in index.html
     html = html.replace(
         'id="apiBaseScript" data-api-base=""',
         f'id="apiBaseScript" data-api-base="{api_base}"',
         1,
     )
+
+    # Cache-bust main.js based on settings.version
+    html = html.replace(
+        'src="/static/main.js"',
+        f'src="/static/main.js?v={settings.version}"',
+        1,
+    )
+
     return HTMLResponse(html)

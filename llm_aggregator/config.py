@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import os
+from datetime import datetime, UTC
+from importlib.metadata import version as pkg_version, PackageNotFoundError
 from pathlib import Path
 from typing import List, Tuple
 
@@ -23,6 +25,11 @@ class Settings(BaseSettings):
     time: TimeConfig
     providers: List[ProviderConfig]
 
+    try:
+        version: str = pkg_version("llm_aggregator")
+    except PackageNotFoundError:
+        version: str = datetime.now(UTC).strftime('%Y%m%d%H%M%S')
+
     model_config = SettingsConfigDict(extra="forbid")
 
     @property
@@ -39,12 +46,12 @@ class Settings(BaseSettings):
 
     @classmethod
     def settings_customise_sources(
-        cls,
-        settings_cls: type["Settings"],
-        init_settings: PydanticBaseSettingsSource,
-        env_settings: PydanticBaseSettingsSource,
-        dotenv_settings: PydanticBaseSettingsSource,
-        file_secret_settings: PydanticBaseSettingsSource,
+            cls,
+            settings_cls: type["Settings"],
+            init_settings: PydanticBaseSettingsSource,
+            env_settings: PydanticBaseSettingsSource,
+            dotenv_settings: PydanticBaseSettingsSource,
+            file_secret_settings: PydanticBaseSettingsSource,
     ) -> Tuple[PydanticBaseSettingsSource, ...]:
         yaml_path = _resolve_config_path()
 
