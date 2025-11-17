@@ -4,14 +4,14 @@ import os
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
 import pytest
 
 from llm_aggregator import config as config_module
 from llm_aggregator.config import CONFIG_ENV_VAR
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 DEFAULT_TEST_CONFIG = ROOT / "config.yaml"
 os.environ.setdefault(CONFIG_ENV_VAR, str(DEFAULT_TEST_CONFIG))
