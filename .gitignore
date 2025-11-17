@@ -5,3 +5,4 @@
 dist/
 /llm_aggregator/_version.py
 **/.coverage
+config.local.yaml

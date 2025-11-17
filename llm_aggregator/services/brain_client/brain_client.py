@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 
 import aiohttp
+from aiohttp import ClientResponseError, ClientError
 
 from llm_aggregator.config import get_settings
 
@@ -26,25 +27,27 @@ async def chat_completions(payload: dict[str, str | list[dict[str, str]] | float
             async with session.post(url, headers=headers, json=payload,
                                     timeout=settings.enrich_models_timeout) as r:
                 if r.status >= 400:
-                    text = await r.text()
-                    logging.error(
-                        "Brain call failed with HTTP %s: %.200r",
-                        r.status,
-                        text,
-                    )
+                    r.raise_for_status()
                     return ""
 
                 try:
                     response = await r.json(content_type=None)
-                except Exception:
+                except ClientError:
                     text = await r.text()
                     logging.error("Brain returned non-JSON response: %.200r", text)
                     return ""
+    except ClientResponseError as e:
+        logging.error(
+            "Brain call failed with HTTP %s: %.200r",
+            e.status,
+            e.message,
+        )
+        return ""
+    except TimeoutError as e:
+        logging.warning("Brain request timeout error: %r", e)
+        return ""
     except Exception as e:
-        if isinstance(e, TimeoutError):
-            logging.warning("Brain request timeout error: %r", e)
-        else:
-            logging.error("Brain request general error: %r", e)
+        logging.error("Brain request general error: %r", e)
         return ""
 
     # Parse OpenAI-style response
