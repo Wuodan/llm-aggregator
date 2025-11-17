@@ -1,17 +1,19 @@
 from __future__ import annotations
 
+import importlib
 import os
 import sys
 from pathlib import Path
 
 import pytest
 
-from llm_aggregator import config as config_module
-from llm_aggregator.config import CONFIG_ENV_VAR
-
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+
+config_module = importlib.import_module("llm_aggregator.config")
+CONFIG_ENV_VAR = config_module.CONFIG_ENV_VAR
+
 
 DEFAULT_TEST_CONFIG = ROOT / "config.yaml"
 os.environ.setdefault(CONFIG_ENV_VAR, str(DEFAULT_TEST_CONFIG))
