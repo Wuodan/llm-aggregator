@@ -8,8 +8,7 @@ from typing import Any, Dict
 class BrainConfig:
     """Configuration for the enrichment (brain) LLM endpoint."""
 
-    host: str
-    port: int
+    base_url: str
     # The model-id
     id: str
     api_key: str|None = None

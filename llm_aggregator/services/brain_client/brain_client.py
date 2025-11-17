@@ -11,7 +11,7 @@ from llm_aggregator.config import get_settings
 async def chat_completions(payload: dict[str, str | list[dict[str, str]] | float]) -> str|None:
     settings = get_settings()
 
-    url = f"{settings.brain.host}:{settings.brain.port}/v1/chat/completions"
+    url = f"{settings.brain.base_url}/chat/completions"
 
     headers:dict[str, str] = {
         "Content-Type": "application/json",

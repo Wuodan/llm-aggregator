@@ -5,9 +5,8 @@ host: "0.0.0.0"
 port: 8888
 
 brain:
-  host: "http://10.7.2.100"
-  # Port of the provider where the enrichment model is hosted
-  port: 8080
+  # URL of the provider where the enrichment model is hosted
+  base_url: "http://10.7.2.100:8080/v1"
   # Model used by the brain to enrich model metadata
   id: "unsloth/GLM-4.6-GGUF:UD-IQ2_XXS"
   # If set, send Authorization: Bearer <API-KEY> for calls to this port
