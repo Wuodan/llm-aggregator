@@ -42,7 +42,7 @@ async def chat_completions(payload: dict[str, str | list[dict[str, str]] | float
                     return ""
     except Exception as e:
         if isinstance(e, TimeoutError):
-            logging.warn("Brain request timeout error: %r", e)
+            logging.warning("Brain request timeout error: %r", e)
         else:
             logging.error("Brain request general error: %r", e)
         return ""
