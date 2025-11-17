@@ -1,6 +1,7 @@
 **/.idea/
 **/.venv/
 **/venv/
+**/__pycache__/
 dist/
 /llm_aggregator/_version.py
 **/.coverage
