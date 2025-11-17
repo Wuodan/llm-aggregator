@@ -20,7 +20,7 @@ ENRICH_USER_PROMPT = (
         "      \"model_family\": <Gemma, Qwen, Llama, Mistral, etc.>,\n"
         "      \"context_size\": <your best guess>,\n"
         "      \"quant\": <quantization of the LL model>,\n"
-        "      \"param\": <internal weights and values>,\n"
+        "      \"param\": <internal weights and values, if numeric use the form 'number B'>,\n"
         "    },\n"
         "    ... one entry per input model, in the same order ...\n"
         "  ]\n"
