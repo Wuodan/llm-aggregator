@@ -74,7 +74,6 @@ class ModelStore:
         ]
         """
         async with self._lock:
-
             # Merge models + optional enrichment
             merged_list = []
 
@@ -87,11 +86,11 @@ class ModelStore:
 
                 merged_list.append(base)
 
-            # Sort by port and model-id (case-insensitive)
+            # Sort by provider (external URL) and model-id (case-insensitive)
             merged_list.sort(
                 key=lambda m: (
-                    int(m.get("port", 0)),
-                    str(m.get("id", "")).lower()
+                    str(m.get("base_url") or ""),
+                    str(m.get("id", "")).lower(),
                 )
             )
 

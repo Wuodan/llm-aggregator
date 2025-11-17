@@ -16,7 +16,13 @@ class DummyStore:
 
     async def get_snapshot(self):
         self.snapshots += 1
-        return [{"id": "m", "port": 9000}]
+        return [
+            {
+                "id": "m",
+                "base_url": "https://public-provider.example/v1",
+                "internal_base_url": "http://provider:8000/v1",
+            }
+        ]
 
 
 class DummyTasksManager:
@@ -34,7 +40,15 @@ def test_api_models_returns_snapshot(monkeypatch):
     async def _run():
         response = await api_module.api_models()
         payload = json.loads(response.body.decode())
-        assert payload == {"models": [{"id": "m", "port": 9000}]}
+        assert payload == {
+            "models": [
+                {
+                    "id": "m",
+                    "base_url": "https://public-provider.example/v1",
+                    "internal_base_url": "http://provider:8000/v1",
+                }
+            ]
+        }
         assert store.snapshots == 1
 
     asyncio.run(_run())

@@ -52,7 +52,7 @@
         const tr = document.createElement('tr');
         tr.innerHTML = [
           '<td>' + (row.id || '') + '</td>',
-          '<td>' + (row.port || '') + '</td>',
+          '<td>' + (row.base_url || '') + '</td>',
           '<td>' + (
             Array.isArray(row.types)
               ? row.types.join(', ')

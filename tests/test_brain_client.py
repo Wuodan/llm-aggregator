@@ -46,10 +46,10 @@ class FakeSession:
 
 def _settings(api_key: str | None = "secret"):
     brain = SimpleNamespace(
-        host="http://brain-host",
-        port=8088,
+        base_url="http://brain-host:8088/v1",
         id="brain-model",
         api_key=api_key,
+        max_batch_size=2,
     )
     return SimpleNamespace(
         brain=brain,

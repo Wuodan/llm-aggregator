@@ -3,13 +3,17 @@ from __future__ import annotations
 import asyncio
 from types import SimpleNamespace
 
-from llm_aggregator.models import EnrichedModel, ModelInfo, ModelKey
+from llm_aggregator.models import EnrichedModel, ModelInfo, ModelKey, ProviderConfig
 from llm_aggregator.services import tasks as tasks_module
 
 
 def _model(idx: int) -> ModelInfo:
-    key = ModelKey(port=7000, id=f"model-{idx}")
-    return ModelInfo(key=key, raw={"id": key.id, "port": key.port})
+    provider = ProviderConfig(
+        base_url=f"https://provider-{idx}.example/v1",
+        internal_base_url=f"http://provider-{idx}:8000/v1",
+    )
+    key = ModelKey(provider=provider, id=f"model-{idx}")
+    return ModelInfo(key=key, raw={"id": key.id})
 
 
 class FakeStore:
@@ -72,7 +76,7 @@ def test_background_tasks_manager_enrichment_flow(monkeypatch):
                 requeued.set()
                 return []
             enriched = [
-                EnrichedModel(key=m.key, enriched={"id": m.key.id, "port": m.key.port})
+                EnrichedModel(key=m.key, enriched={"summary": f"{m.key.id}-summary"})
                 for m in batch
             ]
             applied.set()

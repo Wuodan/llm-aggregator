@@ -38,16 +38,17 @@ async def chat_completions(payload: dict[str, str | list[dict[str, str]] | float
                     return ""
     except ClientResponseError as e:
         logging.error(
-            "Brain call failed with HTTP %s: %.200r",
+            "Brain call to %s failed with HTTP %s: %.200r",
+            url,
             e.status,
             e.message,
         )
         return ""
     except TimeoutError as e:
-        logging.warning("Brain request timeout error: %r", e)
+        logging.warning("Brain request to %s received timeout error: %r", url, e)
         return ""
     except Exception as e:
-        logging.error("Brain request general error: %r", e)
+        logging.error("Brain request to %s received general error: %r", url, e)
         return ""
 
     # Parse OpenAI-style response

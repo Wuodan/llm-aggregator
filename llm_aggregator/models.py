@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Dict
 
 
@@ -11,7 +11,7 @@ class BrainConfig:
     base_url: str
     # The model-id
     id: str
-    api_key: str|None = None
+    api_key: str | None = None
     max_batch_size: int = 1
 
 
@@ -26,44 +26,58 @@ class TimeConfig:
 
 @dataclass(frozen=True)
 class ProviderConfig:
-    """Configuration for a single OpenAI-compatible provider.
+    """Configuration for a single OpenAI-compatible provider."""
 
-    A provider is identified by its base URL and port. In the current setup
-    all providers share the same host, but the dataclass does not assume this.
-    """
+    base_url: str  # public/external URL exposed via API responses
+    internal_base_url: str | None = field(default=None)
 
-    base_url: str
-    port: int
+    def __post_init__(self):
+        # If not explicitly set, default to base_url
+        if self.internal_base_url is None:
+            object.__setattr__(self, "internal_base_url", self.base_url)
 
-    @property
-    def base_endpoint(self) -> str:
-        """Return the full base endpoint (e.g. "https://host:8080")."""
-        return f"{self.base_url}:{self.port}"
+    @classmethod
+    def from_api_dict(cls, raw: Dict[str, Any]) -> ProviderConfig | None:
+        base_url = raw.get("base_url")
+        internal_base_url = raw.get("internal_base_url")
+
+        if not isinstance(base_url, str) or not isinstance(internal_base_url, str):
+            return None
+
+        return cls(base_url=base_url, internal_base_url=internal_base_url)
 
 
 @dataclass(frozen=True)
 class ModelKey:
     """Stable identifier for a model in this system.
 
-    We currently key by (port, model-id), which is sufficient as long as
-    each port exposes a unique model ID namespace.
+    We currently key by (base_url, model-id), which is sufficient as long as
+    each base_url exposes a unique model ID namespace.
     """
 
-    port: int
-    # Model ID
+    provider: ProviderConfig
     id: str
-
-    @property
-    def api_model(self) -> str:
-        """Return the raw model id used in API payloads."""
-        return self.id
 
     def to_api_dict(self) -> Dict[str, Any]:
         """Return the shape expected in the public /api/models 'models' list."""
         return {
             "id": self.id,
-            "port": self.port,
+            "base_url": self.provider.base_url,
+            "internal_base_url": self.provider.internal_base_url,
         }
+
+    @classmethod
+    def from_api_dict(cls, raw: Dict[str, Any]) -> ModelKey | None:
+        provider_config = ProviderConfig.from_api_dict(raw)
+        model_id = raw.get("id")
+
+        if not isinstance(provider_config, ProviderConfig) or not isinstance(model_id, str):
+            return None
+
+        return cls(
+            provider=provider_config,
+            id=model_id,
+        )
 
 
 @dataclass
@@ -71,23 +85,16 @@ class ModelInfo:
     """Represents a model discovered from a provider.
 
     Attributes:
-        key:   Unique ModelKey (port + model id).
-        raw:   Original /v1/models entry merged with port information.
+        key:   Unique ModelKey (provider config + model id).
+        raw:   Original /v1/models entry merged with provider information.
     """
 
     key: ModelKey
-    raw: Dict[str, Any]
+    raw: Dict[str, Any] = field(default_factory=dict)
 
     def to_api_dict(self) -> Dict[str, Any]:
-        """Return the shape expected in the public /api/models 'models' list.
-
-        This keeps the external contract compatible with the existing frontend.
-        """
-        # Ensure id + port are present at top-level.
-        data = dict(self.raw)
-        data.setdefault("id", self.key.id)
-        data.setdefault("port", self.key.port)
-        return data
+        base = self.key.to_api_dict()
+        return {**self.raw, **base}
 
 
 @dataclass
@@ -101,8 +108,15 @@ class EnrichedModel:
     enriched: Dict[str, Any] | None = None
 
     def to_api_dict(self) -> Dict[str, Any]:
-        """Return the shape expected in the public /api/models 'enriched' list."""
         base = self.key.to_api_dict()
-        if self.enriched is not None:
-                    base = {**base, **self.enriched}
-        return base
+        enriched = self.enriched or {}
+
+        # First take enriched, then override with base on conflicts
+        data = {**enriched, **base}
+
+        # Drop a few internal keys
+        filtered_keys = {"internal_base_url"}
+        data = {k: v for k, v in data.items() if k not in filtered_keys}
+
+        return data
+

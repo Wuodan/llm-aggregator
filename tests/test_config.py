@@ -14,8 +14,7 @@ def test_settings_load_from_custom_yaml(tmp_path, monkeypatch):
         host: "1.2.3.4"
         port: 1234
         brain:
-          host: "http://brain"
-          port: 8088
+          base_url: "http://brain:8088/v1"
           id: "brain-model"
           api_key: null
           max_batch_size: 2
@@ -25,8 +24,9 @@ def test_settings_load_from_custom_yaml(tmp_path, monkeypatch):
           enrich_models_timeout: 7
           enrich_idle_sleep: 1
         providers:
-          - base_url: http://p1
-            port: 9000
+          - base_url: https://public-p1.example/v1
+            internal_base_url: http://p1:9000/v1
+          - base_url: https://public-p2.example/v1
         """
     ).strip()
     path = tmp_path / "test-config.yaml"
@@ -40,7 +40,14 @@ def test_settings_load_from_custom_yaml(tmp_path, monkeypatch):
     assert settings.fetch_models_interval == 5
     assert settings.fetch_models_timeout == 3
     assert settings.enrich_models_timeout == 7
-    assert settings.providers[0].base_endpoint == "http://p1:9000"
+    assert settings.brain.base_url == "http://brain:8088/v1"
+    assert settings.brain.id == "brain-model"
+    assert settings.brain.api_key is None
+    assert settings.providers[0].base_url == "https://public-p1.example/v1"
+    assert settings.providers[0].internal_base_url == "http://p1:9000/v1"
+    # Defaults to base_url when not provided
+    assert settings.providers[1].base_url == "https://public-p2.example/v1"
+    assert settings.providers[1].internal_base_url == "https://public-p2.example/v1"
 
     # Cached object is reused to avoid re-parsing.
     assert config_module.get_settings() is settings

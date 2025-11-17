@@ -14,12 +14,12 @@ async def _fetch_models_for_provider(
     session: aiohttp.ClientSession,
     provider: ProviderConfig,
 ) -> List[ModelInfo]:
-    """Fetch model list from one provider (one port), robustly.
+    """Fetch model list from one provider endpoint, robustly.
 
     Returns a list of ModelInfo entries. On any error, logs and returns an empty list.
     """
-    url = f"{provider.base_endpoint}/v1/models"
-    port = provider.port
+    base = provider.internal_base_url.rstrip("/")
+    url = f"{base}/models"
     settings = get_settings()
 
     try:
@@ -27,7 +27,7 @@ async def _fetch_models_for_provider(
             if r.status >= 400:
                 text = await r.text()
                 logging.error(
-                    "Provider %s returned HTTP %s for /v1/models: %.200r",
+                    "Provider %s returned HTTP %s for /models: %.200r",
                     url,
                     r.status,
                     text,
@@ -38,7 +38,7 @@ async def _fetch_models_for_provider(
             except Exception:
                 text = await r.text()
                 logging.error(
-                    "Non-JSON /v1/models from %s: %.200r",
+                    "Non-JSON /models from %s: %.200r",
                     url,
                     text,
                 )
@@ -66,7 +66,7 @@ async def _fetch_models_for_provider(
         models_raw = payload
     else:
         logging.error(
-            "Unexpected /v1/models type from %s: %r",
+            "Unexpected /models type from %s: %r",
             url,
             type(payload),
         )
@@ -75,19 +75,17 @@ async def _fetch_models_for_provider(
     result: List[ModelInfo] = []
     for m in models_raw:
         if isinstance(m, dict) and "id" in m:
-            key = ModelKey(port=port, id=str(m["id"]))
-            raw = dict(m)
-            raw["port"] = port
-            result.append(ModelInfo(key=key, raw=raw))
+            model_key = ModelKey(provider=provider, id=str(m["id"]))
+            result.append(ModelInfo(key=model_key))
 
-    logging.info("Fetched %d models from port %s", len(result), port)
+    logging.info("Fetched %d models from url %s", len(result), url)
     return result
 
 
 async def gather_models() -> List[ModelInfo]:
     """Aggregate model lists from all configured providers.
 
-    Uses settings.providers to know which ports/base URLs to query.
+    Uses settings.providers to know which base URLs to query.
     """
     settings = get_settings()
     providers = settings.providers
@@ -104,14 +102,13 @@ async def gather_models() -> List[ModelInfo]:
             p = providers[idx]
             logging.error(
                 "Unhandled error while fetching models from %s: %s",
-                p.base_endpoint,
+                p.internal_base_url,
                 res,
             )
             continue
         all_models.extend(res)
 
-    # sort by port, then by model id
-    all_models.sort(key=lambda m: (m.key.port, m.key.id.lower()))
+    # sort by provider base_url, then by model id
+    all_models.sort(key=lambda m: (m.key.provider.base_url, m.key.id.lower()))
     logging.info("Gathered %d models total", len(all_models))
     return all_models
-

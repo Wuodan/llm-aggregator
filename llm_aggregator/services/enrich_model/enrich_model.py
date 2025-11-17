@@ -11,26 +11,22 @@ from llm_aggregator.services.enrich_model._map_enrich_result import _map_enrich_
 from ._extract_json_object import _extract_json_object
 
 
-async def enrich_batch(models: List[ModelInfo]) -> List[EnrichedModel]:
+async def enrich_batch(model_infos: List[ModelInfo]) -> List[EnrichedModel]:
     """Call the configured brain LLM to enrich metadata for a batch of models.
 
     Returns a list of EnrichedModel. On any error or malformed response,
     logs and returns an empty list.
     """
-    if not models:
+    if not model_infos:
         return []
 
+    input_models = {m.key: m for m in model_infos}
+
     # Build prompt input: minimal but deterministic
-    input_models = [
-        {
-            "id": m.key.id,
-            "port": m.key.port,
-        }
-        for m in models
-    ]
+    api_model_infos = [m.to_api_dict() for m in input_models.values()]
 
     # IMPORTANT: don't overwrite `models` (the list of ModelInfo)!
-    models_json = json.dumps(input_models, ensure_ascii=False)
+    models_json = json.dumps(api_model_infos, ensure_ascii=False)
 
     payload = {
         "messages": [
@@ -43,18 +39,13 @@ async def enrich_batch(models: List[ModelInfo]) -> List[EnrichedModel]:
 
     enriched_list = await _get_enriched_list(payload)
 
-    # Map by (model, port) for safety
-    input_keys = {
-        (m.key.id, m.key.port): m.key for m in models
-    }
-
-    result = await _map_enrich_result(input_keys, enriched_list)
+    result = await _map_enrich_result(input_models, enriched_list)
 
     logging.info("Brain enrichment produced %d entries", len(result))
     return result
 
 
-async def _get_enriched_list(payload: dict[str, str | list[dict[str, str]] | float]):
+async def _get_enriched_list(payload: dict[str, str | list[dict[str, str]] | float]) -> list:
     completions: str | None = await chat_completions(payload)
 
     try:
@@ -69,7 +60,8 @@ async def _get_enriched_list(payload: dict[str, str | list[dict[str, str]] | flo
             logging.error("Brain JSON missing 'enriched' list: %r", enriched_obj)
             return []
 
+        return enriched_list
+
     except Exception as e:
         logging.error("Brain enrich error: %r", e)
         return []
-    return enriched_list
