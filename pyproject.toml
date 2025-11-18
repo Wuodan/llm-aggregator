@@ -30,10 +30,10 @@ Issues = "https://github.com/Wuodan/llm-aggregator/issues"
 llm-aggregator = "llm_aggregator.cli:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["llm_aggregator"]
+packages = ["src/llm_aggregator"]
 
 [tool.hatch.version]
 source = "vcs"
 
 [tool.hatch.build.hooks.vcs]
-version-file = "llm_aggregator/_version.py"
+version-file = "src/llm_aggregator/_version.py"

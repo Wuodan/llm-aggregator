@@ -28,10 +28,10 @@ jobs:
           python -m pip install -r requirements-dev.txt
 
       - name: Lint
-        run: ruff check llm_aggregator tests
+        run: ruff check src tests
 
       - name: Run tests
-        run: pytest --cov=llm_aggregator --cov-report=term-missing
+        run: pytest --cov=src --cov-report=term-missing
 
   publish:
     name: Publish to PyPI
