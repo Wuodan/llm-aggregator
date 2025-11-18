@@ -12,6 +12,7 @@ def test_main_invokes_uvicorn(monkeypatch):
     class DummySettings:
         host = "0.0.0.0"
         port = 5555
+        log_level = "INFO"
 
     def fake_run(app_path, host, port, reload):
         called["app"] = app_path
@@ -48,6 +49,7 @@ def test_main_module_executes_when_run_directly(monkeypatch):
     class DummySettings:
         host = "127.0.0.1"
         port = 4242
+        log_level = "INFO"
 
     def fake_run(app_path, host, port, reload):
         called["app"] = app_path
@@ -67,3 +69,28 @@ def test_main_module_executes_when_run_directly(monkeypatch):
         "port": 4242,
         "reload": False,
     }
+
+
+def test_main_configures_logging_from_settings(monkeypatch):
+    called = {}
+
+    class DummySettings:
+        host = "1.2.3.4"
+        port = 9999
+        log_level = "debug"
+
+    def fake_basic_config(**kwargs):
+        called["logging"] = kwargs
+
+    def fake_run(*args, **kwargs):
+        called["ran"] = True
+
+    monkeypatch.setattr(main_module, "get_settings", lambda: DummySettings())
+    monkeypatch.setattr(main_module.logging, "basicConfig", fake_basic_config)
+    monkeypatch.setattr(main_module.uvicorn, "run", fake_run)
+
+    main_module.main()
+
+    assert called["ran"]
+    assert called["logging"]["level"] == "DEBUG"
+    assert "filename" in called["logging"]["format"]

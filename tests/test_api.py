@@ -89,38 +89,38 @@ def _build_request(host: str = "example.com", scheme: str = "https") -> Request:
     return Request(scope)
 
 
+class DummySettings:
+    def __init__(self, api_base_url: str | None):
+        self.api_base_url = api_base_url
+        self.version = "test-version"
+
+
 def test_serve_index_injects_request_base(tmp_path, monkeypatch):
-    index_html = '<div id="apiBaseScript" data-api-base=""></div>'
+    index_html = '<div id="apiBaseScript" data-api-base=""></div><script src="/static/main.js"></script>'
     (tmp_path / "index.html").write_text(index_html, encoding="utf-8")
     monkeypatch.setattr(api_module, "static_dir", Path(tmp_path))
-
-    class DummySettings:
-        api_base_url = None
-
-    monkeypatch.setattr(api_module, "settings", DummySettings())
+    monkeypatch.setattr(api_module, "settings", DummySettings(api_base_url=None))
 
     async def _run():
         response = await api_module.serve_index(_build_request())
         body = response.body.decode()
         assert 'data-api-base="https://example.com"' in body
+        assert 'src="/static/main.js?v=test-version"' in body
 
     asyncio.run(_run())
 
 
 def test_serve_index_prefers_configured_base(tmp_path, monkeypatch):
-    index_html = '<div id="apiBaseScript" data-api-base=""></div>'
+    index_html = '<div id="apiBaseScript" data-api-base=""></div><script src="/static/main.js"></script>'
     (tmp_path / "index.html").write_text(index_html, encoding="utf-8")
     monkeypatch.setattr(api_module, "static_dir", Path(tmp_path))
-
-    class DummySettings:
-        api_base_url = "https://configured"
-
-    monkeypatch.setattr(api_module, "settings", DummySettings())
+    monkeypatch.setattr(api_module, "settings", DummySettings(api_base_url="https://configured"))
 
     async def _run():
         response = await api_module.serve_index(_build_request(host="other"))
         body = response.body.decode()
         assert 'data-api-base="https://configured"' in body
+        assert 'src="/static/main.js?v=test-version"' in body
 
     asyncio.run(_run())
 

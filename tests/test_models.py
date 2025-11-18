@@ -14,7 +14,7 @@ def test_enriched_model_to_api_dict_merges_fields():
     assert data["summary"] == "desc"
     assert data["id"] == "alpha"
     assert data["base_url"] == "https://public-a.example/v1"
-    assert data["internal_base_url"] == "http://provider-a:8000/v1"
+    assert "internal_base_url" not in data
 
 
 def test_model_info_to_api_dict_fills_missing_fields():

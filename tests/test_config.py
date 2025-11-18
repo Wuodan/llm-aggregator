@@ -43,6 +43,7 @@ def test_settings_load_from_custom_yaml(tmp_path, monkeypatch):
     assert settings.brain.base_url == "http://brain:8088/v1"
     assert settings.brain.id == "brain-model"
     assert settings.brain.api_key is None
+    assert settings.log_level == "INFO"
     assert settings.providers[0].base_url == "https://public-p1.example/v1"
     assert settings.providers[0].internal_base_url == "http://p1:9000/v1"
     # Defaults to base_url when not provided

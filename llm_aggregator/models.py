@@ -119,4 +119,3 @@ class EnrichedModel:
         data = {k: v for k, v in data.items() if k not in filtered_keys}
 
         return data
-
