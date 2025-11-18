@@ -35,21 +35,25 @@ pip install llm-aggregator
 
 ## Configuration
 
-See [config.yaml](config.yaml).
+All runtime behavior is controlled through the YAML file pointed to by the `LLM_AGGREGATOR_CONFIG` environment variable. Use [config.yaml](config.yaml) as a reference template.
 
 ### Configuration Options
 
-- **host/port**: Server binding address
-- **brain**: Configuration for the enrichment LLM
-  - `host`: Base URL of the enrichment model server
-  - `port`: Port where enrichment model runs
-  - `id`: Model identifier for enrichment
-  - `api_key`: Optional API key for authentication
-  - `max_batch_size`: Models to enrich per batch
-- **time**: Timing configurations for background tasks
-- **providers**: List of LLM servers to monitor
-  - `base_url`: Base endpoint for the provider
-  - `port`: Port number for model discovery
+- **host / port** – Where the FastAPI server and static frontend bind.
+- **log_level** – Logging verbosity (`DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`). Defaults to `INFO` if omitted.
+- **brain** – Settings for the enrichment LLM:
+  - `base_url` – HTTP endpoint of the enrichment provider.
+  - `id` – Model identifier passed to the provider.
+  - `api_key` – Optional bearer token injected into requests.
+  - `max_batch_size` – Number of models to enrich at once.
+- **time** – Background scheduling knobs (all in seconds):
+  - `fetch_models_interval`
+  - `fetch_models_timeout`
+  - `enrich_models_timeout`
+  - `enrich_idle_sleep`
+- **providers** – Each entry describes an OpenAI-compatible backend to query:
+  - `base_url` – Public URL returned via the REST API.
+  - `internal_base_url` – Optional internal URL used for server-to-server calls; defaults to `base_url` when omitted.
 
 ## Usage
 
