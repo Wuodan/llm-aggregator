@@ -4,10 +4,11 @@ import json
 import logging
 from typing import List
 
-from llm_aggregator.models import ModelInfo, EnrichedModel
+from llm_aggregator.models import EnrichedModel, ModelInfo
 from llm_aggregator.services.brain_client.brain_client import chat_completions
 from llm_aggregator.services.enrich_model._const import ENRICH_SYSTEM_PROMPT, ENRICH_USER_PROMPT
 from llm_aggregator.services.enrich_model._map_enrich_result import _map_enrich_result
+from llm_aggregator.services.model_info import fetch_model_markdown
 from ._extract_json_object import _extract_json_object
 
 
@@ -20,29 +21,45 @@ async def enrich_batch(model_infos: List[ModelInfo]) -> List[EnrichedModel]:
     if not model_infos:
         return []
 
-    input_models = {m.key: m for m in model_infos}
+    aggregated: List[EnrichedModel] = []
+    for model in model_infos:
+        enriched_models = await _enrich_single_model(model)
+        aggregated.extend(enriched_models)
 
-    # Build prompt input: minimal but deterministic
-    api_model_infos = [m.to_api_dict() for m in input_models.values()]
+    logging.info("Brain enrichment produced %d entries", len(aggregated))
+    return aggregated
 
-    # IMPORTANT: don't overwrite `models` (the list of ModelInfo)!
+
+async def _enrich_single_model(model: ModelInfo) -> List[EnrichedModel]:
+    input_models = {model.key: model}
+    api_model_infos = [model.to_api_dict()]
     models_json = json.dumps(api_model_infos, ensure_ascii=False)
 
+    info_messages = await _build_info_messages(model)
+    messages = [
+        {"role": "system", "content": ENRICH_SYSTEM_PROMPT},
+        {"role": "user", "content": ENRICH_USER_PROMPT},
+        {"role": "user", "content": models_json},
+        *info_messages,
+    ]
+
     payload = {
-        "messages": [
-            {"role": "system", "content": ENRICH_SYSTEM_PROMPT},
-            {"role": "user", "content": ENRICH_USER_PROMPT},
-            {"role": "user", "content": models_json},
-        ],
+        "messages": messages,
         "temperature": 0.2,
     }
 
     enriched_list = await _get_enriched_list(payload)
+    return await _map_enrich_result(input_models, enriched_list)
 
-    result = await _map_enrich_result(input_models, enriched_list)
 
-    logging.info("Brain enrichment produced %d entries", len(result))
-    return result
+async def _build_info_messages(model: ModelInfo) -> list[dict[str, str]]:
+    snippets = await fetch_model_markdown(model)
+    messages: list[dict[str, str]] = []
+    for snippet in snippets:
+        prefix = f"Model-Info for {snippet.model_id} from {snippet.source.provider_label}:"
+        content = f"{prefix}\n\n{snippet.markdown.strip()}"
+        messages.append({"role": "user", "content": content})
+    return messages
 
 
 async def _get_enriched_list(payload: dict[str, str | list[dict[str, str]] | float]) -> list:

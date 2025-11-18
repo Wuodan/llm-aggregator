@@ -8,6 +8,11 @@ ENRICH_SYSTEM_PROMPT = ("You are a strict JSON generator that analyzes a list of
 ENRICH_USER_PROMPT = (
     "Given the following JSON array 'models', generate detailed metadata for each LLM model.\n"
     "\n"
+    "Before the JSON payload you may receive extra user messages like "
+    "'Model-Info for <id> from HuggingFace.co'. They contain markdown context scraped from "
+    "trusted sources. Use that information when relevant, but still obey every rule "
+    "below.\n"
+    "\n"
     "Return EXACTLY this JSON structure and nothing else (valid JSON):\n"
     "{\n"
     "  \"enriched\": [\n"

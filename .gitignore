@@ -3,6 +3,6 @@
 **/venv/
 **/__pycache__/
 dist/
-/llm_aggregator/_version.py
+**/_version.py
 **/.coverage
 config.local.yaml
