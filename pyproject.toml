@@ -11,6 +11,7 @@ license = { text = "Apache-2.0" }
 dependencies = [
     "aiohttp",
     "apscheduler",
+    "extract2md",
     "fastapi",
     "httpx",
     "psutil",

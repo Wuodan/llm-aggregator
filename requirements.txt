@@ -1,5 +1,6 @@
 aiohttp
 apscheduler
+extract2md
 fastapi
 httpx
 psutil
