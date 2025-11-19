@@ -99,8 +99,7 @@ def _build_request(host: str = "example.com", scheme: str = "https") -> Request:
 
 
 class DummySettings:
-    def __init__(self, api_base_url: str | None):
-        self.api_base_url = api_base_url
+    def __init__(self):
         self.version = "test-version"
 
 
@@ -108,7 +107,7 @@ def test_serve_index_injects_request_base(tmp_path, monkeypatch):
     index_html = '<div id="apiBaseScript" data-api-base=""></div><script src="/static/main.js"></script>'
     (tmp_path / "index.html").write_text(index_html, encoding="utf-8")
     monkeypatch.setattr(api_module, "static_dir", Path(tmp_path))
-    monkeypatch.setattr(api_module, "settings", DummySettings(api_base_url=None))
+    monkeypatch.setattr(api_module, "settings", DummySettings())
 
     async def _run():
         response = await api_module.serve_index(_build_request())
@@ -119,17 +118,16 @@ def test_serve_index_injects_request_base(tmp_path, monkeypatch):
     asyncio.run(_run())
 
 
-def test_serve_index_prefers_configured_base(tmp_path, monkeypatch):
+def test_serve_index_uses_request_host(tmp_path, monkeypatch):
     index_html = '<div id="apiBaseScript" data-api-base=""></div><script src="/static/main.js"></script>'
     (tmp_path / "index.html").write_text(index_html, encoding="utf-8")
     monkeypatch.setattr(api_module, "static_dir", Path(tmp_path))
-    monkeypatch.setattr(api_module, "settings", DummySettings(api_base_url="https://configured"))
+    monkeypatch.setattr(api_module, "settings", DummySettings())
 
     async def _run():
-        response = await api_module.serve_index(_build_request(host="other"))
+        response = await api_module.serve_index(_build_request(host="custom", scheme="http"))
         body = response.body.decode()
-        assert 'data-api-base="https://configured"' in body
-        assert 'src="/static/main.js?v=test-version"' in body
+        assert 'data-api-base="http://custom"' in body
 
     asyncio.run(_run())
 

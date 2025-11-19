@@ -81,11 +81,7 @@ async def serve_index(request: Request):
     html_path = static_dir / "index.html"
     html = html_path.read_text(encoding="utf-8")
 
-    api_base = getattr(settings, "api_base_url", None)
-    if not api_base:
-        scheme = request.url.scheme
-        host = request.headers.get("host") or f"{request.client.host}"
-        api_base = f"{scheme}://{host}"
+    api_base = str(request.base_url).rstrip("/")
 
     html = html.replace(
         'id="apiBaseScript" data-api-base=""',
