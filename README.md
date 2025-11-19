@@ -6,15 +6,19 @@ LLM Aggregator keeps a live list of every model exposed by your local OpenAI-com
 
 The UI is a single table plus a small RAM widget, so you immediately see what is running:
 
-| Model       | Provider         | Port  | Types     | Family    | Context | Quant    | Params | Summary                        |
-|-------------|------------------|-------|-----------|-----------|---------|----------|--------|--------------------------------|
-| llama3.1:8b | http://localhost | 11434 | llm       | Llama 3.1 | 8K      | Q4\_K\_M | 8B     | General chat tuned for balance |
-| qwen2.5:14b | http://localhost | 11435 | llm,embed | Qwen 2.5  | 32K     | Q5\_0    | 14B    | Multilingual reasoning focused |
+<!-- pyml disable line-length, no-bare-urls -->
+
+| Model       | Base URL                   | Types     | Family    | Context | Quant    | Params | Summary                        |
+|-------------|----------------------------|-----------|-----------|---------|----------|--------|--------------------------------|
+| llama3.1:8b | http://10.7.2.100:11434/v1 | llm       | Llama 3.1 | 8K      | Q4\_K\_M | 8B     | General chat tuned for balance |
+| qwen2.5:14b | http://10.7.2.100:8080/v1  | llm,embed | Qwen 2.5  | 32K     | Q5\_0    | 14B    | Multilingual reasoning focused |
+
+<!-- pyml enable line-length, no-bare-urls -->
 
 Columns:
 
 - `Model` – identifier reported by the provider.
-- `Provider` / `Port` – where the model is served.
+- `Base URL` – where the model is served.
 - `Types` – capabilities (LLM, VLM, embedder, etc.).
 - `Family` – base architecture inferred by the helper LLM.
 - `Context` – approximate context window in tokens.
@@ -55,22 +59,23 @@ Use [config.yaml](config.yaml) as a reference template.
 
 - **host / port** – Where the FastAPI server and static frontend bind.
 - **log_level** – Logging verbosity (`DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`). Defaults to `INFO` if omitted.
-- **log_format** – Optional `logging` format string. When omitted the service leaves existing logging configuration untouched.
+- **log_format** – Optional `logging` format string. When omitted the service leaves existing logging configuration
+  untouched.
 - **logger_overrides** – Map of logger names to override their logging level
   (e.g., `httpx: WARNING`).
 - **brain** – Settings for the enrichment LLM:
-    - `base_url` – HTTP endpoint of the enrichment provider.
-    - `id` – Model identifier passed to the provider.
-    - `api_key` – Optional bearer token injected into requests.
-    - `max_batch_size` – Number of models to enrich at once (defaults to 1).
+  - `base_url` – HTTP endpoint of the enrichment provider.
+  - `id` – Model identifier passed to the provider.
+  - `api_key` – Optional bearer token injected into requests.
+  - `max_batch_size` – Number of models to enrich at once (defaults to 1).
 - **time** – Background scheduling knobs (all in seconds):
-    - `fetch_models_interval`
-    - `fetch_models_timeout`
-    - `enrich_models_timeout`
-    - `enrich_idle_sleep`
+  - `fetch_models_interval`
+  - `fetch_models_timeout`
+  - `enrich_models_timeout`
+  - `enrich_idle_sleep`
 - **providers** – Each entry describes an OpenAI-compatible backend to query:
-    - `base_url` – Public URL returned via the REST API.
-    - `internal_base_url` – Optional internal URL used for server-to-server calls; defaults to `base_url` when omitted.
+  - `base_url` – Public URL returned via the REST API.
+  - `internal_base_url` – Optional internal URL used for server-to-server calls; defaults to `base_url` when omitted.
 
 ## Usage
 
