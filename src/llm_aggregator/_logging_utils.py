@@ -14,7 +14,7 @@ def build_uvicorn_log_config(
     log_format: str | None,
     logger_overrides: dict[str, str | int],
 ) -> dict[str, Any]:
-    """Return a uvicorn logging config aligned with the app settings."""
+    """Return an uvicorn logging config aligned with the app settings."""
 
     log_config = copy.deepcopy(LOGGING_CONFIG)
     formatters = log_config.get("formatters", {})

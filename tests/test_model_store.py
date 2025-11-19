@@ -43,12 +43,15 @@ def test_model_store_snapshot_and_enrichment_merging():
         await store.apply_enrichment([enriched])
 
         snapshot = await store.get_snapshot()
-        assert [entry["base_url"] for entry in snapshot] == [
+        assert [entry["llm_aggregator"]["base_url"] for entry in snapshot] == [
             "https://provider-a.example/v1",
             "https://provider-b.example/v1",
         ]
-        assert snapshot[1]["summary"] == "gamma summary"
+        assert snapshot[1]["llm_aggregator"]["summary"] == "gamma summary"
         assert snapshot[0]["meta"] == "updated"
+        aggregator_meta = snapshot[0]["llm_aggregator"]
+        assert "id" not in aggregator_meta
+        assert "internal_base_url" not in aggregator_meta
 
     asyncio.run(_run())
 

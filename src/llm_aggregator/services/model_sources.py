@@ -76,7 +76,9 @@ async def _fetch_models_for_provider(
     for m in models_raw:
         if isinstance(m, dict) and "id" in m:
             model_key = ModelKey(provider=provider, id=str(m["id"]))
-            result.append(ModelInfo(key=model_key))
+            # Store the provider payload so downstream responses can retain
+            # every OpenAI field plus custom extensions verbatim.
+            result.append(ModelInfo(key=model_key, raw=dict(m)))
 
     logging.info("Fetched %d models from url %s", len(result), url)
     return result

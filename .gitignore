@@ -5,4 +5,4 @@
 dist/
 **/_version.py
 **/.coverage
-config.local.yaml
+config.*.yaml

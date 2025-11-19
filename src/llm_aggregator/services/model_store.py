@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import asyncio
 import time
-from typing import Dict, List
+from typing import Any, Dict, List
 
 from ..models import ModelKey, ModelInfo, EnrichedModel
+
+_RESPONSE_META_KEY = "llm_aggregator"
 
 
 class ModelStore:
@@ -14,7 +16,7 @@ class ModelStore:
     - Track the current set of discovered models.
     - Track enriched metadata for those models.
     - Maintain a queue of models that still need enrichment.
-    - Provide snapshots for the /api/models endpoint.
+    - Provide snapshots for the public /v1/models endpoint.
     """
 
     def __init__(self) -> None:
@@ -65,36 +67,21 @@ class ModelStore:
             self._last_update_ts = time.time()
 
     async def get_snapshot(self) -> List[dict]:
-        """Return a snapshot compatible with the public /api/models shape.
-
-        Structure:
-        [
-            { ... model info ... },
-            ...
-        ]
-        """
+        """Return snapshot entries for the public /v1/models response."""
         async with self._lock:
-            # Merge models + optional enrichment
-            merged_list = []
-
+            entries = []
             for key, model in self._models.items():
-                base = model.to_api_dict()
                 enriched = self._enriched.get(key)
+                entries.append(self._build_snapshot_entry(model, enriched))
 
-                if enriched is not None:
-                    base = {**base, **enriched.to_api_dict()}
-
-                merged_list.append(base)
-
-            # Sort by provider (external URL) and model-id (case-insensitive)
-            merged_list.sort(
-                key=lambda m: (
-                    str(m.get("base_url") or ""),
-                    str(m.get("id", "")).lower(),
+            entries.sort(
+                key=lambda item: (
+                    str(item[_RESPONSE_META_KEY].get("base_url") or ""),
+                    str(item.get("id", "")).lower(),
                 )
             )
 
-            return merged_list
+            return entries
 
     async def get_enrichment_batch(self, max_batch_size: int) -> List[ModelInfo]:
         """Pop up to ``max_batch_size`` models from the queue for enrichment.
@@ -172,3 +159,37 @@ class ModelStore:
             return
         await self._queue.put(model)
         self._queued_keys.add(model.key)
+
+    # ------------------------------------------------------------------
+    # Snapshot helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _build_snapshot_entry(
+            model: ModelInfo,
+        enriched: EnrichedModel | None,
+    ) -> Dict[str, Any]:
+        """Merge provider payload with aggregator metadata.
+
+        Provider data is returned verbatim (plus a canonical id/object) so
+        OpenAI-compatible clients see the fields they expect. Aggregator data
+        is namespaced under ``llm_aggregator`` to keep custom metadata separate.
+        """
+
+        provider_payload: Dict[str, Any] = dict(model.raw)
+        provider_payload["id"] = model.key.id
+        provider_payload.setdefault("object", "model")
+
+        aggregator_meta: Dict[str, Any] = {
+            "base_url": model.key.provider.base_url,
+        }
+
+        if enriched and enriched.enriched:
+            enriched_meta = dict(enriched.enriched)
+            aggregator_meta.update(enriched_meta)
+            # Drop fields that would duplicate OpenAI data or expose internal routing.
+            for field in ("id", "internal_base_url"):
+                aggregator_meta.pop(field, None)
+
+        provider_payload[_RESPONSE_META_KEY] = aggregator_meta
+        return provider_payload

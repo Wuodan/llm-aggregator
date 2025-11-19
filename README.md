@@ -6,14 +6,14 @@ LLM Aggregator keeps a live list of every model exposed by your local OpenAI-com
 
 The UI is a single table plus a small RAM widget, so you immediately see what is running:
 
-<!-- pyml disable line-length, no-bare-urls -->
+<!-- pyml disable line-length -->
 
-| Model       | Base URL                   | Types     | Family    | Context | Quant    | Params | Summary                        |
-|-------------|----------------------------|-----------|-----------|---------|----------|--------|--------------------------------|
-| llama3.1:8b | http://10.7.2.100:11434/v1 | llm       | Llama 3.1 | 8K      | Q4\_K\_M | 8B     | General chat tuned for balance |
-| qwen2.5:14b | http://10.7.2.100:8080/v1  | llm,embed | Qwen 2.5  | 32K     | Q5\_0    | 14B    | Multilingual reasoning focused |
+| Model       | Base URL                     | Types     | Family    | Context | Quant    | Params | Summary                        |
+|-------------|------------------------------|-----------|-----------|---------|----------|--------|--------------------------------|
+| llama3.1:8b | `http://10.7.2.100:11434/v1` | llm       | Llama 3.1 | 8K      | Q4\_K\_M | 8B     | General chat tuned for balance |
+| qwen2.5:14b | `http://10.7.2.100:8080/v1`  | llm,embed | Qwen 2.5  | 32K     | Q5\_0    | 14B    | Multilingual reasoning focused |
 
-<!-- pyml enable line-length, no-bare-urls -->
+<!-- pyml enable line-length -->
 
 Columns:
 
@@ -96,4 +96,4 @@ export LLM_AGGREGATOR_CONFIG=/path/to/config.yaml
 python -m llm_aggregator
 ```
 
-By default the web interface will be available at `http://localhost:8888`
+By default, the web interface will be available at `http://localhost:8888`.

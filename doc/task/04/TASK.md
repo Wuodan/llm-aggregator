@@ -15,28 +15,28 @@ Important:
 
 - Describe the tasks, not your idea of the solution.
 - Remember that each task will be executed in new sessions without memory of our discussion here. Keep the task files
-  clean of feedback to me or the details of our discussion here. Only store information relevant to the task exeution
+  clean of feedback to me or the details of our discussion here. Only store information relevant to the task execution
   session.
 
 ## Task 05: OpenAI compatible /v1/models output
 
-For this task I added a document about the OpenAI compatibleresponse format of /v1/models in
+For this task I added a document about the OpenAI compatible response format of /v1/models in
 `doc/general/OpenAI-models-response.md`.
 
-I basically want to change the custom reponse format of current /api/models to the OpenAI compatible format and serve it
+I basically want to change the custom response format of current /api/models to the OpenAI compatible format and serve it
 under /v1/models. /api/models can then be removed.
 
 ### Retail full information from LLM servers
 
 Right now we only return the model-id and base_url in the /v1/models response.  
 I want to retain the full information from the LLM servers and include that in our own response to /v1/models.  
-Keep this simple, the only field you must hardcode is the "id" field. When this is dynamic, then also the custom "meta"
+Keep this simple, the only field you must hard-code is the "id" field. When this is dynamic, then also the custom "meta"
 object form llama.cpp and any other custom fields are automatically included in our response.
 
-### Custom field "llm-aggregator" in response
+### Custom field "llm_aggregator" in response
 
-Like llama.cpp adds its own custom "meta" object, our endpoint shall add a custom "llm-aggregator" object to the response.  
-This object shall all the fields that we currently output except for "id" which is already part of the OpenAI response.
+Like llama.cpp adds its own custom "meta" object, our endpoint shall add a custom "llm_aggregator" object to the response.  
+This object shall include all the fields that we currently output except for "id" which is already part of the OpenAI response.
 
 ### Ignore UI index.html and main.js
 
@@ -53,8 +53,8 @@ model-info-pages:
     name: Ollama.com
 ```
 
-this also means the prefixes to the user message to brain can no longer be hardcoded, all neccessary parts must come
-from the config (name, etc).
+this also means the prefixes to the user message to brain can no longer be hardcoded, all necessary parts must come
+from the config (name, etc.).
 
 ## Task 07: Custom UI
 
@@ -72,7 +72,7 @@ I want users to be able to add their own UI.
 Quick ideas for this:
 
 - config: add path for custom folder to serve static content from other paths on the OS
-- config: add boolean flag to serve no static content at at all (might not be needed if we can put current static
+- config: add boolean flag to serve no static content at all (might not be needed if we can put current static
   content path in config)
 - When the app serves no static UI, the user can easily use the REST endpoints to load data into his own frontend
 
@@ -92,7 +92,7 @@ The table in the UI is very important, it's already in the readme. other key ben
   - Website information from HuggingFace.co, Ollama.com, etc.
     to produce additional output for Web UIs like the table in the integrated UI
 - has integrated simple Web UI
-- has additional REST endpoint and output in integrated UI for RAM-Informatio of app host (must not be equals to LLM
+- has additional REST endpoint and output in integrated UI for RAM-Information of app host (must not be equals to LLM
   servers)
 
 ### Document REST endpoints

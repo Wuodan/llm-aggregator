@@ -18,7 +18,7 @@ Rewrite the README so it clearly explains, to a technical audience, what the pro
      - `GET /v1/models`
      - `GET /api/stats`
      - `POST /api/clear`
-   - Mention authentication expectations (if any) and note that `/v1/models` follows the OpenAI schema plus the `llm-aggregator` extension from Task 05.
+   - Mention authentication expectations (if any) and note that `/v1/models` follows the OpenAI schema plus the `llm_aggregator` extension from Task 05.
 
 3. **UI replacement instructions**
    - Based on the configuration work from Task 07, explain how to:

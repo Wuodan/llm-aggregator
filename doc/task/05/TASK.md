@@ -20,13 +20,13 @@ Expose the OpenAI ListModelsResponse at `/v1/models` and remove the legacy `/api
    - When consolidating provider responses, preserve every key that the upstream `/v1/models` entries expose. The only field that the aggregator needs to supply itself is the `id` string (in case a backend omits or alters it).
    - If a provider extends the schema (e.g., llama.cpp’s `meta`), those properties must remain in our `data` entry verbatim.
 
-3. **`llm-aggregator` augmentation**
-   - Each `Model` object must add a sibling object named `llm-aggregator`.
-   - That object contains exactly the data points we used to emit previously on `/api/models`, minus the duplicated `id`. Today that includes (but is not limited to):
+3. **`llm_aggregator` augmentation**
+   - Each `Model` object must add a sibling object named `llm_aggregator`.
+   - That object contains exactly the data points we used to emit previously on `/api/models`, minus the duplicated `id` (and the internal routing URL). Today that includes (but is not limited to):
      - `base_url` (public provider URL)
      - any enrichment output such as `summary`, `types`, `model_family`, `context_size`, `quant`, `param`
      - any future aggregator-only attributes produced by enrichment or local bookkeeping
-   - Do **not** mirror this data back into the top-level OpenAI fields. Everything aggregator-specific belongs inside `llm-aggregator`.
+   - Do **not** mirror this data back into the top-level OpenAI fields. Everything aggregator-specific belongs inside `llm_aggregator`.
 
 4. **Sorting and ordering**
    - Preserve a deterministic ordering of the returned models (same order we use today: by provider base URL, then case-insensitive model id), so downstream consumers and snapshots remain predictable.
@@ -35,7 +35,7 @@ Expose the OpenAI ListModelsResponse at `/v1/models` and remove the legacy `/api
    - Update/extend automated tests to assert that:
      - `/v1/models` returns the required OpenAI shape.
      - Provider metadata (e.g., `meta`) is untouched.
-     - The `llm-aggregator` object contains the prior custom fields and omits `id`.
+     - The `llm_aggregator` object contains the prior custom fields and omits `id`.
    - Remove tests targeting `/api/models`.
 
 6. **Documentation**

@@ -21,7 +21,7 @@ tasks_manager = BackgroundTasksManager(store)
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(_: FastAPI):
     """Application lifespan: start/stop background tasks around FastAPI."""
     logging.info("Starting LLM Aggregator app")
     await tasks_manager.start()
@@ -35,11 +35,16 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 
-@app.get("/api/models")
-async def api_models():
-    """Return current models + enrichment snapshot."""
+@app.get("/v1/models")
+async def list_models():
+    """Return the OpenAI ListModelsResponse with aggregator metadata.
+
+    Each entry follows the schema from doc/general/OpenAI-models-response.md and
+    adds an ``llm_aggregator`` object that mirrors our enrichment snapshot.
+    """
+
     snapshot = await store.get_snapshot()
-    return JSONResponse({"models": snapshot})
+    return JSONResponse({"object": "list", "data": snapshot})
 
 
 @app.get("/api/stats")

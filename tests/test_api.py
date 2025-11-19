@@ -19,8 +19,12 @@ class DummyStore:
         return [
             {
                 "id": "m",
-                "base_url": "https://public-provider.example/v1",
-                "internal_base_url": "http://provider:8000/v1",
+                "object": "model",
+                "meta": {"size": 42},
+                "llm_aggregator": {
+                    "base_url": "https://public-provider.example/v1",
+                    "summary": "hello",
+                },
             }
         ]
 
@@ -33,21 +37,26 @@ class DummyTasksManager:
         self.restarted = True
 
 
-def test_api_models_returns_snapshot(monkeypatch):
+def test_v1_models_returns_snapshot(monkeypatch):
     store = DummyStore()
     monkeypatch.setattr(api_module, "store", store)
 
     async def _run():
-        response = await api_module.api_models()
+        response = await api_module.list_models()
         payload = json.loads(response.body.decode())
         assert payload == {
-            "models": [
+            "object": "list",
+            "data": [
                 {
                     "id": "m",
-                    "base_url": "https://public-provider.example/v1",
-                    "internal_base_url": "http://provider:8000/v1",
+                    "object": "model",
+                    "meta": {"size": 42},
+                    "llm_aggregator": {
+                        "base_url": "https://public-provider.example/v1",
+                        "summary": "hello",
+                    },
                 }
-            ]
+            ],
         }
         assert store.snapshots == 1
 
@@ -129,10 +138,12 @@ def test_lifespan_starts_and_stops_tasks(monkeypatch):
     events = []
 
     class DummyTasks:
-        async def start(self):
+        @staticmethod
+        async def start():
             events.append("start")
 
-        async def stop(self):
+        @staticmethod
+        async def stop():
             events.append("stop")
 
     monkeypatch.setattr(api_module, "tasks_manager", DummyTasks())

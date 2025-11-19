@@ -59,7 +59,7 @@ class ModelKey:
     id: str
 
     def to_api_dict(self) -> Dict[str, Any]:
-        """Return the shape expected in the public /api/models 'models' list."""
+        """Return canonical metadata we attach to aggregator responses."""
         return {
             "id": self.id,
             "base_url": self.provider.base_url,

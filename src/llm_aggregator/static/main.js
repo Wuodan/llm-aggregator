@@ -42,32 +42,34 @@
 
   async function loadModels() {
     try {
-      const res = await fetch(apiBase + '/api/models');
+      const res = await fetch(apiBase + '/v1/models');
       if (!res.ok) throw new Error('HTTP ' + res.status);
-      const data = await res.json();
-      const rows = data.models || [];
+      const json = await res.json();
+      const models = json.data || [];
 
       tbody.innerHTML = '';
-      rows.forEach(row => {
+      models.forEach(model => {
         const tr = document.createElement('tr');
+        const id = model.id || '';
+        const llm_aggregator = model.llm_aggregator || {};
         tr.innerHTML = [
-          '<td>' + (row.id || '') + '</td>',
-          '<td>' + (row.base_url || '') + '</td>',
+          '<td>' + (id) + '</td>',
+          '<td>' + (llm_aggregator.base_url || '') + '</td>',
           '<td>' + (
-            Array.isArray(row.types)
-              ? row.types.join(', ')
-              : (row.types || '')
+            Array.isArray(llm_aggregator.types)
+              ? llm_aggregator.types.join(', ')
+              : (llm_aggregator.types || '')
           ) + '</td>',
-          '<td>' + (row.model_family || '') + '</td>',
-          '<td>' + (row.context_size || '') + '</td>',
-          '<td>' + (row.quant || '') + '</td>',
-          '<td>' + (row.param || '') + '</td>',
-          '<td>' + (row.summary || '') + '</td>'
+          '<td>' + (llm_aggregator.model_family || '') + '</td>',
+          '<td>' + (llm_aggregator.context_size || '') + '</td>',
+          '<td>' + (llm_aggregator.quant || '') + '</td>',
+          '<td>' + (llm_aggregator.param || '') + '</td>',
+          '<td>' + (llm_aggregator.summary || '') + '</td>'
         ].join('');
         tbody.appendChild(tr);
       });
 
-      tbl.style.display = rows.length ? '' : 'none';
+      tbl.style.display = models.length ? '' : 'none';
       updatedEl.textContent = 'Last update: ' + new Date().toLocaleTimeString();
     } catch (err) {
       console.warn('loadModels failed', err);

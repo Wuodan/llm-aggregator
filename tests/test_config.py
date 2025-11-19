@@ -56,7 +56,7 @@ def test_settings_load_from_custom_yaml(tmp_path, monkeypatch):
     assert settings.providers[1].base_url == "https://public-p2.example/v1"
     assert settings.providers[1].internal_base_url == "https://public-p2.example/v1"
 
-    # Cached object is reused to avoid re-parsing.
+    # Cached object is reused to avoid reparsing.
     assert config_module.get_settings() is settings
 
 
