@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime, UTC
+from datetime import datetime, timezone
 from importlib.metadata import version as pkg_version, PackageNotFoundError
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     try:
         version: str = pkg_version("llm_aggregator")
     except PackageNotFoundError:
-        version: str = datetime.now(UTC).strftime('%Y%m%d%H%M%S')
+        version: str = datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')
 
     model_config = SettingsConfigDict(extra="forbid")
 
