@@ -27,6 +27,9 @@ def test_settings_load_from_custom_yaml(tmp_path, monkeypatch):
           - base_url: https://public-p1.example/v1
             internal_base_url: http://p1:9000/v1
           - base_url: https://public-p2.example/v1
+        logger_overrides:
+          extract2md: warning
+          noisy.lib: ERROR
         """
     ).strip()
     path = tmp_path / "test-config.yaml"
@@ -45,6 +48,8 @@ def test_settings_load_from_custom_yaml(tmp_path, monkeypatch):
     assert settings.brain.api_key is None
     assert settings.log_level == "INFO"
     assert settings.log_format is None
+    assert settings.logger_overrides["extract2md"] == "warning"
+    assert settings.logger_overrides["noisy.lib"] == "ERROR"
     assert settings.providers[0].base_url == "https://public-p1.example/v1"
     assert settings.providers[0].internal_base_url == "http://p1:9000/v1"
     # Defaults to base_url when not provided

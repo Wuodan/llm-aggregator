@@ -4,8 +4,9 @@ import os
 from datetime import datetime, UTC
 from importlib.metadata import version as pkg_version, PackageNotFoundError
 from pathlib import Path
-from typing import List, Tuple
+from typing import Any, Dict, List, Tuple
 
+from pydantic import Field
 from pydantic_settings import (
     BaseSettings,
     SettingsConfigDict,
@@ -18,6 +19,10 @@ from .models import ProviderConfig, BrainConfig, TimeConfig
 CONFIG_ENV_VAR = "LLM_AGGREGATOR_CONFIG"
 
 
+def _default_logger_overrides() -> Dict[str, str | int]:
+    return {}
+
+
 class Settings(BaseSettings):
     host: str
     port: int
@@ -26,6 +31,9 @@ class Settings(BaseSettings):
     brain: BrainConfig
     time: TimeConfig
     providers: List[ProviderConfig]
+    logger_overrides: Dict[str, str | int] = Field(
+        default_factory=_default_logger_overrides
+    )
 
     try:
         version: str = pkg_version("llm_aggregator")
@@ -33,6 +41,11 @@ class Settings(BaseSettings):
         version: str = datetime.now(UTC).strftime('%Y%m%d%H%M%S')
 
     model_config = SettingsConfigDict(extra="forbid")
+
+    def model_post_init(self, __context: Any) -> None:
+        # Ensure logger_overrides always has a dict (even when YAML sets null)
+        if self.logger_overrides is None:
+            object.__setattr__(self, "logger_overrides", {})
 
     @property
     def fetch_models_interval(self) -> int:

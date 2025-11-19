@@ -5,13 +5,14 @@ import logging
 import uvicorn
 
 from llm_aggregator.config import get_settings
+from llm_aggregator._logging_utils import (
+    apply_logger_overrides,
+    build_uvicorn_log_config,
+)
 
 
 def main() -> None:
-    """Run the LLM Aggregator API server.
-
-    Uses the FastAPI app defined in ``llm_aggregator.api:app``.
-    """
+    """Run the LLM Aggregator API server."""
     settings = get_settings()
 
     log_level = (
@@ -26,14 +27,19 @@ def main() -> None:
     if settings.log_format:
         logging.basicConfig(level=log_level, format=settings.log_format)
 
+    apply_logger_overrides(settings.logger_overrides)
+
+    uvicorn_log_config = build_uvicorn_log_config(
+        log_level, settings.log_format, settings.logger_overrides
+    )
+
     uvicorn.run(
         "llm_aggregator.api:app",
         host=settings.host,
         port=settings.port,
         reload=False,
         access_log=False,
+        log_config=uvicorn_log_config,
     )
-
-
 if __name__ == "__main__":
     main()

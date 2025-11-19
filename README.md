@@ -56,6 +56,8 @@ Use [config.yaml](config.yaml) as a reference template.
 - **host / port** – Where the FastAPI server and static frontend bind.
 - **log_level** – Logging verbosity (`DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`). Defaults to `INFO` if omitted.
 - **log_format** – Optional `logging` format string. When omitted the service leaves existing logging configuration untouched.
+- **logger_overrides** – Map of logger names to override their logging level
+  (e.g., `httpx: WARNING`).
 - **brain** – Settings for the enrichment LLM:
     - `base_url` – HTTP endpoint of the enrichment provider.
     - `id` – Model identifier passed to the provider.

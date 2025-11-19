@@ -8,6 +8,8 @@ log_level: INFO
 # Optional logging format string
 # Example: Replace 'pathname' with 'filename' to get shorter output
 log_format: "%(asctime)s - %(levelname)s - %(pathname)s:%(lineno)d - %(message)s"
+logger_overrides:
+  httpx: WARNING
 
 brain:
   # URL of the provider where the enrichment model is hosted
