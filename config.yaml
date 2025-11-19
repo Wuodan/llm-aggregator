@@ -13,7 +13,7 @@ brain:
   # If set, send Authorization: Bearer <API-KEY> for calls to this port
   api_key: "unsloth/GLM-4.6-GGUF:UD-IQ2_XXS"
   # Maximum number of models to enrich in a single batch
-  max_batch_size: 5
+  max_batch_size: 1
 
 time:
   # Interval for fetching the list of models from all providers

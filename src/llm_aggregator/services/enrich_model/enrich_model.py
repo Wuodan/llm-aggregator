@@ -23,33 +23,29 @@ async def enrich_batch(model_infos: List[ModelInfo]) -> List[EnrichedModel]:
 
     aggregated: List[EnrichedModel] = []
     for model in model_infos:
-        enriched_models = await _enrich_single_model(model)
+        input_models = {model.key: model}
+        api_model_infos = [model.to_api_dict()]
+        models_json = json.dumps(api_model_infos, ensure_ascii=False)
+
+        info_messages = await _build_info_messages(model)
+        messages = [
+            {"role": "system", "content": ENRICH_SYSTEM_PROMPT},
+            {"role": "user", "content": ENRICH_USER_PROMPT},
+            *info_messages,
+            {"role": "user", "content": models_json},
+        ]
+
+        payload = {
+            "messages": messages,
+            "temperature": 0.2,
+        }
+
+        enriched_list = await _get_enriched_list(payload)
+        enriched_models = await _map_enrich_result(input_models, enriched_list)
         aggregated.extend(enriched_models)
 
     logging.info("Brain enrichment produced %d entries", len(aggregated))
     return aggregated
-
-
-async def _enrich_single_model(model: ModelInfo) -> List[EnrichedModel]:
-    input_models = {model.key: model}
-    api_model_infos = [model.to_api_dict()]
-    models_json = json.dumps(api_model_infos, ensure_ascii=False)
-
-    info_messages = await _build_info_messages(model)
-    messages = [
-        {"role": "system", "content": ENRICH_SYSTEM_PROMPT},
-        {"role": "user", "content": ENRICH_USER_PROMPT},
-        {"role": "user", "content": models_json},
-        *info_messages,
-    ]
-
-    payload = {
-        "messages": messages,
-        "temperature": 0.2,
-    }
-
-    enriched_list = await _get_enriched_list(payload)
-    return await _map_enrich_result(input_models, enriched_list)
 
 
 async def _build_info_messages(model: ModelInfo) -> list[dict[str, str]]:

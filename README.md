@@ -59,7 +59,7 @@ Use [config.yaml](config.yaml) as a reference template.
     - `base_url` – HTTP endpoint of the enrichment provider.
     - `id` – Model identifier passed to the provider.
     - `api_key` – Optional bearer token injected into requests.
-    - `max_batch_size` – Number of models to enrich at once.
+    - `max_batch_size` – Number of models to enrich at once (defaults to 1).
 - **time** – Background scheduling knobs (all in seconds):
     - `fetch_models_interval`
     - `fetch_models_timeout`
