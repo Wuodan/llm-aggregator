@@ -5,7 +5,7 @@ import asyncio
 from llm_aggregator.models import ModelInfo, ModelKey, ProviderConfig
 from llm_aggregator.services.model_info import fetcher as fetcher_module
 from llm_aggregator.services.model_info._cache import WebsiteInfoCache
-from llm_aggregator.services.model_info._sources import ALL_SOURCES
+from llm_aggregator.services.model_info._sources import get_website_sources
 
 
 def _model(model_id: str) -> ModelInfo:
@@ -27,14 +27,15 @@ def test_fetch_model_markdown_fetches_and_caches(monkeypatch):
             return f"{source.key}-{model_id}"
 
         monkeypatch.setattr(fetcher_module, "_download_markdown", fake_download)
+        sources = get_website_sources()
 
         first = await fetcher_module.fetch_model_markdown(_model("llama3:8b"))
-        assert len(first) == len(ALL_SOURCES)
+        assert len(first) == len(sources)
         assert all(s.model_id == "llama3" for s in first)
-        assert set(calls.keys()) == {s.key for s in ALL_SOURCES}
+        assert set(calls.keys()) == {s.key for s in sources}
 
         second = await fetcher_module.fetch_model_markdown(_model("llama3:8b"))
-        assert len(second) == len(ALL_SOURCES)
+        assert len(second) == len(sources)
         # Still only one download per source thanks to cache
         assert all(count == 1 for count in calls.values())
 
@@ -44,16 +45,18 @@ def test_fetch_model_markdown_fetches_and_caches(monkeypatch):
 def test_fetch_model_markdown_skips_missing_sources(monkeypatch):
     async def _run():
         fetcher_module._CACHE = WebsiteInfoCache(ttl_seconds=60)
+        sources = get_website_sources()
+        missing_key = sources[0].key
 
         async def fake_download(source, model_id):
-            if source.key == "huggingface":
+            if source.key == missing_key:
                 return None
             return f"{source.key}-{model_id}"
 
         monkeypatch.setattr(fetcher_module, "_download_markdown", fake_download)
 
         snippets = await fetcher_module.fetch_model_markdown(_model("qwen"))
-        assert len(snippets) == 1
-        assert snippets[0].source.key == "ollama"
+        assert len(snippets) == len(sources) - 1
+        assert all(snippet.source.key != missing_key for snippet in snippets)
 
     asyncio.run(_run())

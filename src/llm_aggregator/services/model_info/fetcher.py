@@ -8,7 +8,7 @@ from extract2md import fetch_to_markdown
 
 from llm_aggregator.models import ModelInfo
 from ._cache import WebsiteInfoCache
-from ._sources import ALL_SOURCES, WebsiteSource
+from ._sources import WebsiteSource, get_website_sources
 
 ONE_WEEK_SECONDS = 7 * 24 * 60 * 60
 _CACHE = WebsiteInfoCache(ttl_seconds=ONE_WEEK_SECONDS)
@@ -24,14 +24,15 @@ class WebsiteMarkdown:
 async def fetch_model_markdown(model: ModelInfo) -> list[WebsiteMarkdown]:
     """Return markdown snippets from known websites for the given model."""
     normalized_id = _normalize_model_id(model.key.id)
+    sources = get_website_sources()
     tasks = [
         _get_markdown_for_source(source, normalized_id)
-        for source in ALL_SOURCES
+        for source in sources
     ]
     results = await asyncio.gather(*tasks, return_exceptions=True)
 
     snippets: list[WebsiteMarkdown] = []
-    for source, result in zip(ALL_SOURCES, results):
+    for source, result in zip(sources, results):
         if isinstance(result, Exception):
             logging.error(
                 "Website fetch raised unexpected exception for %s at %s: %r",

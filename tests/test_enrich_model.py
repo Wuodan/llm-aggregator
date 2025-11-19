@@ -5,6 +5,10 @@ from types import SimpleNamespace
 
 from llm_aggregator.models import ModelInfo, ModelKey, ProviderConfig
 from llm_aggregator.services.enrich_model import enrich_model as enrich_module
+from llm_aggregator.services.model_info._sources import get_website_sources
+
+
+SOURCE_LABEL = get_website_sources()[0].provider_label
 
 
 def _model(port: int, model_id: str) -> ModelInfo:
@@ -53,7 +57,7 @@ def test_enrich_batch_includes_model_info_messages(monkeypatch):
 
         async def fake_fetch(_model):
             snippet = SimpleNamespace(
-                source=SimpleNamespace(provider_label="HuggingFace.co"),
+                source=SimpleNamespace(provider_label=SOURCE_LABEL),
                 model_id="alpha",
                 markdown="# Title\nSome text",
             )
@@ -67,7 +71,7 @@ def test_enrich_batch_includes_model_info_messages(monkeypatch):
         assert len(result) == 1
 
         messages = payloads[0]["messages"]
-        assert messages[2]["content"].startswith("Model-Info for alpha from HuggingFace.co")
+        assert messages[2]["content"].startswith(f"Model-Info for alpha from {SOURCE_LABEL}")
         assert messages[-1]["content"].startswith("[")
 
     import asyncio

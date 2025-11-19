@@ -14,7 +14,8 @@ from pydantic_settings import (
     YamlConfigSettingsSource,
 )
 
-from .models import ProviderConfig, BrainConfig, TimeConfig
+from .model_info_sources import build_sources_from_config
+from .models import ProviderConfig, BrainConfig, TimeConfig, ModelInfoSourceConfig
 
 CONFIG_ENV_VAR = "LLM_AGGREGATOR_CONFIG"
 
@@ -31,6 +32,7 @@ class Settings(BaseSettings):
     brain: BrainConfig
     time: TimeConfig
     providers: List[ProviderConfig]
+    model_info_sources: List[ModelInfoSourceConfig]
     logger_overrides: Dict[str, str | int] = Field(
         default_factory=_default_logger_overrides
     )
@@ -46,6 +48,8 @@ class Settings(BaseSettings):
         # Ensure logger_overrides always has a dict (even when YAML sets null)
         if self.logger_overrides is None:
             object.__setattr__(self, "logger_overrides", {})
+        # Validate model_info_sources immediately so startup fails fast on bad config.
+        build_sources_from_config(self.model_info_sources)
 
     @property
     def fetch_models_interval(self) -> int:

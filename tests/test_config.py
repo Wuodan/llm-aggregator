@@ -27,6 +27,9 @@ def test_settings_load_from_custom_yaml(tmp_path, monkeypatch):
           - base_url: https://public-p1.example/v1
             internal_base_url: http://p1:9000/v1
           - base_url: https://public-p2.example/v1
+        model_info_sources:
+          - name: "TestSource"
+            url_template: "https://source/{model_id}"
         logger_overrides:
           extract2md: warning
           noisy.lib: ERROR
@@ -55,6 +58,7 @@ def test_settings_load_from_custom_yaml(tmp_path, monkeypatch):
     # Defaults to base_url when not provided
     assert settings.providers[1].base_url == "https://public-p2.example/v1"
     assert settings.providers[1].internal_base_url == "https://public-p2.example/v1"
+    assert settings.model_info_sources[0].name == "TestSource"
 
     # Cached object is reused to avoid reparsing.
     assert config_module.get_settings() is settings
@@ -75,6 +79,38 @@ def test_missing_config_file_raises(monkeypatch):
     config_module._settings = None
     try:
         with pytest.raises(FileNotFoundError):
+            config_module.get_settings()
+    finally:
+        config_module._settings = None
+
+
+def test_invalid_model_info_source_template_raises(tmp_path, monkeypatch):
+    cfg = textwrap.dedent(
+        """
+        host: "0.0.0.0"
+        port: 1
+        brain:
+          base_url: "http://brain"
+          id: "brain"
+        time:
+          fetch_models_interval: 1
+          fetch_models_timeout: 1
+          enrich_models_timeout: 1
+          enrich_idle_sleep: 1
+        providers:
+          - base_url: "http://provider"
+        model_info_sources:
+          - name: "Broken"
+            url_template: "https://example.com/"
+        """
+    ).strip()
+    path = tmp_path / "bad-config.yaml"
+    path.write_text(cfg)
+
+    monkeypatch.setenv(CONFIG_ENV_VAR, str(path))
+    config_module._settings = None
+    try:
+        with pytest.raises(ValueError):
             config_module.get_settings()
     finally:
         config_module._settings = None

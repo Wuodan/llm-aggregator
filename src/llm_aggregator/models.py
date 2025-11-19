@@ -80,6 +80,14 @@ class ModelKey:
         )
 
 
+@dataclass(frozen=True)
+class ModelInfoSourceConfig:
+    """Configuration for an external website that hosts model metadata."""
+
+    name: str
+    url_template: str
+
+
 @dataclass
 class ModelInfo:
     """Represents a model discovered from a provider.

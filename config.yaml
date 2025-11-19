@@ -36,3 +36,11 @@ providers:
     internal_base_url: http://10.7.2.100:8080/v1
   - base_url: http://10.7.2.100:8090/v1
   - base_url: http://10.7.2.100:11434/v1
+
+# Additional websites where markdown model info can be fetched.
+# Every template MUST contain {model_id} or the service will fail to start.
+model_info_sources:
+  - name: "HuggingFace.co"
+    url_template: "https://huggingface.co/{model_id}"
+  - name: "Ollama.com"
+    url_template: "https://ollama.com/library/{model_id}"
