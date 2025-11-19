@@ -7,7 +7,6 @@ from dataclasses import dataclass
 from extract2md import fetch_to_markdown
 
 from llm_aggregator.models import ModelInfo
-
 from ._cache import WebsiteInfoCache
 from ._sources import ALL_SOURCES, WebsiteSource
 
@@ -73,5 +72,5 @@ async def _download_markdown(source: WebsiteSource, model_id: str) -> str | None
     try:
         return await asyncio.to_thread(fetch_to_markdown, url)
     except Exception as exc:
-        logging.warning("extract2md failed for %s: %r", url, exc)
+        logging.debug("extract2md failed for %s: %r", url, exc)
     return None
