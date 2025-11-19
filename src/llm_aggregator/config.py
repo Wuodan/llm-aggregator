@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     host: str
     port: int
     log_level: str = "INFO"
+    log_format: str | None = None
     brain: BrainConfig
     time: TimeConfig
     providers: List[ProviderConfig]

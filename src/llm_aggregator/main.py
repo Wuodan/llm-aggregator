@@ -20,11 +20,11 @@ def main() -> None:
         else settings.log_level
     )
 
+    logging.getLogger().setLevel(log_level)
+
     # Basic logging config; detailed config is also applied in api.lifespan
-    logging.basicConfig(
-        level=log_level,
-        format="%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s",
-    )
+    if settings.log_format:
+        logging.basicConfig(level=log_level, format=settings.log_format)
 
     uvicorn.run(
         "llm_aggregator.api:app",

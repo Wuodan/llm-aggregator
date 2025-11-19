@@ -13,12 +13,14 @@ def test_main_invokes_uvicorn(monkeypatch):
         host = "0.0.0.0"
         port = 5555
         log_level = "INFO"
+        log_format = "%(message)s"
 
-    def fake_run(app_path, host, port, reload):
+    def fake_run(app_path, host, port, reload, access_log):
         called["app"] = app_path
         called["host"] = host
         called["port"] = port
         called["reload"] = reload
+        called["access_log"] = access_log
 
     monkeypatch.setattr(main_module, "get_settings", lambda: DummySettings())
     monkeypatch.setattr(main_module.uvicorn, "run", fake_run)
@@ -29,6 +31,7 @@ def test_main_invokes_uvicorn(monkeypatch):
         "host": "0.0.0.0",
         "port": 5555,
         "reload": False,
+        "access_log": False,
     }
 
 
@@ -50,12 +53,14 @@ def test_main_module_executes_when_run_directly(monkeypatch):
         host = "127.0.0.1"
         port = 4242
         log_level = "INFO"
+        log_format = "%(message)s"
 
-    def fake_run(app_path, host, port, reload):
+    def fake_run(app_path, host, port, reload, access_log):
         called["app"] = app_path
         called["host"] = host
         called["port"] = port
         called["reload"] = reload
+        called["access_log"] = access_log
 
     fake_uvicorn = type("FakeUvicorn", (), {"run": staticmethod(fake_run)})
 
@@ -68,6 +73,7 @@ def test_main_module_executes_when_run_directly(monkeypatch):
         "host": "127.0.0.1",
         "port": 4242,
         "reload": False,
+        "access_log": False,
     }
 
 
@@ -78,6 +84,7 @@ def test_main_configures_logging_from_settings(monkeypatch):
         host = "1.2.3.4"
         port = 9999
         log_level = "debug"
+        log_format = "%(lineno)d - %(message)s"
 
     def fake_basic_config(**kwargs):
         called["logging"] = kwargs
@@ -93,4 +100,37 @@ def test_main_configures_logging_from_settings(monkeypatch):
 
     assert called["ran"]
     assert called["logging"]["level"] == "DEBUG"
-    assert "filename" in called["logging"]["format"]
+    assert called["logging"]["format"] == DummySettings.log_format
+
+
+def test_main_skips_basic_config_when_format_missing(monkeypatch):
+    called = {}
+
+    class DummySettings:
+        host = "5.6.7.8"
+        port = 6000
+        log_level = "warning"
+        log_format = None
+
+    def fake_basic_config(*args, **kwargs):
+        called["basic_config"] = True
+
+    def fake_run(*args, **kwargs):
+        called["ran"] = True
+
+    original_set_level = main_module.logging.Logger.setLevel
+
+    def fake_set_level(self, level):
+        called["logger_level"] = level
+        original_set_level(self, level)
+
+    monkeypatch.setattr(main_module, "get_settings", lambda: DummySettings())
+    monkeypatch.setattr(main_module.logging, "basicConfig", fake_basic_config)
+    monkeypatch.setattr(main_module.logging.Logger, "setLevel", fake_set_level)
+    monkeypatch.setattr(main_module.uvicorn, "run", fake_run)
+
+    main_module.main()
+
+    assert called["ran"]
+    assert called["logger_level"] == "WARNING"
+    assert "basic_config" not in called
