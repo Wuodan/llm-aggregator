@@ -16,6 +16,7 @@ package layout under `tests/`, so introduce a sibling test whenever you add a mo
 - `pymarkdown --config .pymarkdown.json scan .` – check Markdown formatting. For tables with long lines, wrap them into
   `<!-- pyml disable/enable line-length -->`
 - `pytest --cov=src --cov-report=term-missing` – test python code.
+- Use the venv to run `pip`, `ruff`, `pymarkdown`, `pytest`and any other python command.
 - `LLM_AGGREGATOR_CONFIG=./config.local.yaml timeout 120 python -m llm_aggregator >/tmp/llm-aggretator/out.log 2>/tmp/llm-aggretator/err.log` –
 boot the FastAPI app locally with the sample config. Start the server wrapped with `timeout` or it will never exit. Pipe
 stdout/stderr to files for analysis.
