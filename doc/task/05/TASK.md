@@ -7,6 +7,7 @@ Expose the OpenAI ListModelsResponse at `/v1/models` and remove the legacy `/api
 - Current code serves a custom snapshot at `/api/models`.
 - `doc/general/OpenAI-models-response.md` documents the official schema (`object=list`, `data=[Model]`, etc.).
 - Downstream tooling (including the UI) relies on the extra metadata currently emitted in `ModelStore.get_snapshot()`.
+- Backwards compatibility is not desired as I am the only user and want simple code.
 
 ## Requirements
 1. **Endpoint replacement**
