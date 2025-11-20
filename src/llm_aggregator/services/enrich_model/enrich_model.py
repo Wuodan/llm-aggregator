@@ -22,7 +22,6 @@ async def enrich_batch(model_infos: List[ModelInfo]) -> List[EnrichedModel]:
         return []
 
     settings = get_settings()
-    brain_config = settings.brain
     prompts_config = settings.brain_prompts
     aggregated: List[EnrichedModel] = []
     for model in model_infos:

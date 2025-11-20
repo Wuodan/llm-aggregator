@@ -122,7 +122,8 @@ Use `static_enabled` and `custom_static_path` to set one of three modes:
 - **brain_prompts** – LLM instructions kept separate so the block can live at the end of the YAML:
   - `system` – System message injected ahead of every enrichment request.
   - `user` – Main user instruction describing the enrichment JSON contract.
-  - `model_info_prefix_template` – Optional prefix template applied to fetched markdown snippets; receives `{model_id}` and `{provider_label}` placeholders.
+  - `model_info_prefix_template` – Optional prefix template applied to fetched markdown snippets; receives `{model_id}`
+    and `{provider_label}` placeholders.
 
 ---
 
