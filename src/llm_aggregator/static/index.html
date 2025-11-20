@@ -5,21 +5,11 @@
   <title>Large Language Models</title>
   <style>
     body { font-family: system-ui, sans-serif; margin: 2em; }
-    header {
-      display: flex;
-      align-items: flex-end;
-      justify-content: space-between;
-      gap: 1em;
-    }
-    h1 {
-      margin: 0;
-      font-size: 1.8em;
-    }
-    #headerRight {
-      display: flex;
-      align-items: flex-end;
-      gap: 0.5em;
-    }
+    header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1em; }
+    #headerLeft { display: flex; flex-direction: column; gap: 0.75em; }
+    h1 { margin: 0; font-size: 1.8em; }
+    #updated, #credit { font-size: 0.8em; color: #666; }
+    #headerRight { display: flex; align-items: flex-end; gap: 0.5em; }
     #ramBox {
       display: flex;
       flex-direction: column;
@@ -42,7 +32,6 @@
       padding: 0px 8px 0px 0px;
       cursor: pointer;
     }
-    #updated { font-size: 0.8em; color: #666; margin-bottom: 1em; }
     table { border-collapse: collapse; width: 100%; margin-top: 0.5em; }
     th, td { border-bottom: 1px solid #ddd; padding: 6px 8px; font-size: 0.9em; }
     th { background: #f0f0f0; text-align: left; }
@@ -51,9 +40,15 @@
 </head>
 <body>
 <header>
-  <h1>LLM Catalog</h1>
-  <div id="headerRight">
+  <div id="headerLeft">
+    <h1>LLM Catalog</h1>
+    <div id="updated">Loading…</div>
+    <div id="credit">By Stefan Kuhn:
+      <a href="https://github.com/Wuodan/llm-aggregator" target="_blank" rel="noreferrer">GitHub</a>
+    </div>
     <button id="clearBtn">🧹 Recreate Info</button>
+  </div>
+  <div id="headerRight">
     <div id="ramBox">
       <div id="ramLabel">RAM load %</div>
       <canvas id="statsData"></canvas>
@@ -61,7 +56,6 @@
   </div>
 </header>
 
-<div id="updated">Loading…</div>
 <table id="tbl" style="display:none">
   <thead>
     <tr>
