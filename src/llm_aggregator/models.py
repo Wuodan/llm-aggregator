@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Dict
 
 
@@ -86,6 +87,40 @@ class ModelInfoSourceConfig:
 
     name: str
     url_template: str
+
+
+def _default_builtin_static_path() -> Path:
+    return Path(__file__).resolve().parent / "static"
+
+
+@dataclass(frozen=True)
+class UIConfig:
+    """Configuration for serving built-in or custom static assets."""
+
+    static_enabled: bool = True
+    custom_static_path: Path | None = None
+
+    def __post_init__(self) -> None:
+        custom_path = self._normalize_path(self.custom_static_path)
+        object.__setattr__(self, "custom_static_path", custom_path)
+
+    @property
+    def builtin_static_path(self) -> Path:
+        return _default_builtin_static_path()
+
+    def resolve_static_root(self) -> Path:
+        return self.custom_static_path or self.builtin_static_path
+
+    @staticmethod
+    def _normalize_path(value: Path | str | None) -> Path | None:
+        if value is None:
+            return None
+
+        string_value = str(value).strip()
+        if not string_value:
+            return None
+
+        return Path(string_value)
 
 
 @dataclass

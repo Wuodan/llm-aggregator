@@ -4,9 +4,13 @@ import asyncio
 import json
 from pathlib import Path
 
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
 from starlette.requests import Request
 
 from llm_aggregator import api as api_module
+from llm_aggregator import models as models_module
+from llm_aggregator.models import UIConfig
 from llm_aggregator.services.stats_collector import stats_history
 
 
@@ -98,19 +102,21 @@ def _build_request(host: str = "example.com", scheme: str = "https") -> Request:
     return Request(scope)
 
 
-class DummySettings:
-    def __init__(self):
-        self.version = "test-version"
+def _write_ui_bundle(root: Path, *, index_html: str | None = None) -> None:
+    root.mkdir(parents=True, exist_ok=True)
+    html = index_html or '<div id="apiBaseScript" data-api-base=""></div><script src="/static/main.js"></script>'
+    (root / "index.html").write_text(html, encoding="utf-8")
+    (root / "main.js").write_text("console.log('bundle');", encoding="utf-8")
 
 
-def test_serve_index_injects_request_base(tmp_path, monkeypatch):
-    index_html = '<div id="apiBaseScript" data-api-base=""></div><script src="/static/main.js"></script>'
-    (tmp_path / "index.html").write_text(index_html, encoding="utf-8")
-    monkeypatch.setattr(api_module, "static_dir", Path(tmp_path))
-    monkeypatch.setattr(api_module, "settings", DummySettings())
+def test_build_index_handler_injects_request_base(tmp_path):
+    _write_ui_bundle(tmp_path)
+    handler = api_module._build_index_handler(
+        Path(tmp_path), cache_bust=True, version="test-version"
+    )
 
     async def _run():
-        response = await api_module.serve_index(_build_request())
+        response = await handler(_build_request())
         body = response.body.decode()
         assert 'data-api-base="https://example.com"' in body
         assert 'src="/static/main.js?v=test-version"' in body
@@ -118,18 +124,93 @@ def test_serve_index_injects_request_base(tmp_path, monkeypatch):
     asyncio.run(_run())
 
 
-def test_serve_index_uses_request_host(tmp_path, monkeypatch):
-    index_html = '<div id="apiBaseScript" data-api-base=""></div><script src="/static/main.js"></script>'
-    (tmp_path / "index.html").write_text(index_html, encoding="utf-8")
-    monkeypatch.setattr(api_module, "static_dir", Path(tmp_path))
-    monkeypatch.setattr(api_module, "settings", DummySettings())
+def test_build_index_handler_uses_request_host(tmp_path):
+    _write_ui_bundle(tmp_path)
+    handler = api_module._build_index_handler(
+        Path(tmp_path), cache_bust=True, version="test-version"
+    )
 
     async def _run():
-        response = await api_module.serve_index(_build_request(host="custom", scheme="http"))
+        response = await handler(_build_request(host="custom", scheme="http"))
         body = response.body.decode()
         assert 'data-api-base="http://custom"' in body
 
     asyncio.run(_run())
+
+
+class DummySettings:
+    def __init__(self, ui_config: UIConfig, version: str = "test-version"):
+        self.ui = ui_config
+        self.version = version
+
+
+def test_configure_ui_routes_serves_builtin_bundle(tmp_path, monkeypatch):
+    _write_ui_bundle(tmp_path)
+    monkeypatch.setattr(
+        models_module,
+        "_default_builtin_static_path",
+        lambda: Path(tmp_path),
+    )
+    ui_config = UIConfig(static_enabled=True)
+    app = FastAPI()
+    api_module._configure_ui_routes(app, DummySettings(ui_config, version="bundle-version"))
+
+    with TestClient(app) as client:
+        resp = client.get("/")
+        assert resp.status_code == 200
+        assert 'src="/static/main.js?v=bundle-version"' in resp.text
+
+        static_resp = client.get("/static/main.js")
+        assert static_resp.status_code == 200
+        assert static_resp.text == "console.log('bundle');"
+        assert static_resp.headers["Cache-Control"] == "no-cache"
+
+
+def test_configure_ui_routes_serves_custom_bundle_without_cache_bust(tmp_path, monkeypatch):
+    builtin_path = tmp_path / "builtin"
+    custom_path = tmp_path / "custom"
+    _write_ui_bundle(builtin_path)
+    _write_ui_bundle(custom_path)
+    monkeypatch.setattr(
+        models_module,
+        "_default_builtin_static_path",
+        lambda: builtin_path,
+    )
+
+    ui_config = UIConfig(
+        static_enabled=True,
+        custom_static_path=custom_path,
+    )
+    app = FastAPI()
+    api_module._configure_ui_routes(app, DummySettings(ui_config, version="custom-version"))
+
+    with TestClient(app) as client:
+        resp = client.get("/")
+        assert resp.status_code == 200
+        assert 'src="/static/main.js?v=custom-version"' not in resp.text
+        assert 'src="/static/main.js"' in resp.text
+
+        static_resp = client.get("/static/main.js")
+        assert static_resp.status_code == 200
+        assert static_resp.headers["Cache-Control"] == "no-cache"
+
+
+def test_configure_ui_routes_skips_mount_when_disabled(tmp_path, monkeypatch):
+    builtin_path = tmp_path / "builtin"
+    _write_ui_bundle(builtin_path)
+    monkeypatch.setattr(
+        models_module,
+        "_default_builtin_static_path",
+        lambda: builtin_path,
+    )
+
+    ui_config = UIConfig(static_enabled=False)
+    app = FastAPI()
+    api_module._configure_ui_routes(app, DummySettings(ui_config))
+
+    with TestClient(app) as client:
+        assert client.get("/").status_code == 404
+        assert client.get("/static/main.js").status_code == 404
 
 
 def test_lifespan_starts_and_stops_tasks(monkeypatch):

@@ -1,15 +1,15 @@
 from __future__ import annotations
 
 import logging
-import os
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Awaitable, Callable
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
-from .config import get_settings
+from .config import Settings, get_settings
 from .services.model_store import ModelStore
 from .services.stats_collector import stats_history
 from .services.tasks import BackgroundTasksManager
@@ -59,11 +59,6 @@ async def clear_data():
     return JSONResponse({"status": "cleared"})
 
 
-# ---- Static frontend ----
-
-static_dir = Path(os.path.dirname(__file__)) / "static"
-
-
 class NoCacheStaticFiles(StaticFiles):
     async def get_response(self, path, scope):
         response = await super().get_response(path, scope)
@@ -71,29 +66,44 @@ class NoCacheStaticFiles(StaticFiles):
         return response
 
 
-# Serve assets at /static (main.js, css, etc.) with no-cache
-app.mount("/static", NoCacheStaticFiles(directory=static_dir), name="static")
+def _configure_ui_routes(app: FastAPI, settings: Settings) -> None:
+    ui = settings.ui
+    if not ui.static_enabled:
+        return
+
+    static_root = ui.resolve_static_root()
+    app.mount("/static", NoCacheStaticFiles(directory=static_root), name="static")
+
+    cache_bust = ui.custom_static_path is None
+    handler = _build_index_handler(static_root, cache_bust=cache_bust, version=settings.version)
+    app.add_api_route("/", handler, response_class=HTMLResponse)
 
 
-@app.get("/", response_class=HTMLResponse)
-async def serve_index(request: Request):
-    """Serve index.html and inject dynamic API base URL for the frontend JS."""
-    html_path = static_dir / "index.html"
-    html = html_path.read_text(encoding="utf-8")
+def _build_index_handler(
+    static_root: Path, *, cache_bust: bool, version: str
+) -> Callable[[Request], Awaitable[HTMLResponse]]:
+    async def serve_index(request: Request) -> HTMLResponse:
+        html_path = static_root / "index.html"
+        html = html_path.read_text(encoding="utf-8")
 
-    api_base = str(request.base_url).rstrip("/")
+        api_base = str(request.base_url).rstrip("/")
+        html = html.replace(
+            'id="apiBaseScript" data-api-base=""',
+            f'id="apiBaseScript" data-api-base="{api_base}"',
+            1,
+        )
 
-    html = html.replace(
-        'id="apiBaseScript" data-api-base=""',
-        f'id="apiBaseScript" data-api-base="{api_base}"',
-        1,
-    )
+        # Cache-bust main.js based on settings.version
+        if cache_bust:
+            html = html.replace(
+                'src="/static/main.js"',
+                f'src="/static/main.js?v={version}"',
+                1,
+            )
 
-    # Cache-bust main.js based on settings.version
-    html = html.replace(
-        'src="/static/main.js"',
-        f'src="/static/main.js?v={settings.version}"',
-        1,
-    )
+        return HTMLResponse(html)
 
-    return HTMLResponse(html)
+    return serve_index
+
+
+_configure_ui_routes(app, settings)

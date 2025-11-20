@@ -31,6 +31,14 @@ time:
   # for enrichment loop when queue is empty
   enrich_idle_sleep: 5
 
+ui:
+  # Controls whether FastAPI serves static assets (either the bundled UI or a custom bundle).
+  static_enabled: true
+  # Optional custom UI bundle directory. Leave unset/null to use the built-in dashboard.
+  # Custom bundles must contain a readable index.html at their root.
+  # When static_enabled is false, nothing is served at "/" or "/static" even if a path is provided.
+  custom_static_path: null
+
 providers:
   - base_url: http://10.7.2.100:8080/v1
     internal_base_url: http://10.7.2.100:8080/v1

@@ -15,7 +15,13 @@ from pydantic_settings import (
 )
 
 from .model_info_sources import build_sources_from_config
-from .models import ProviderConfig, BrainConfig, TimeConfig, ModelInfoSourceConfig
+from .models import (
+    ProviderConfig,
+    BrainConfig,
+    TimeConfig,
+    ModelInfoSourceConfig,
+    UIConfig,
+)
 
 CONFIG_ENV_VAR = "LLM_AGGREGATOR_CONFIG"
 
@@ -36,6 +42,7 @@ class Settings(BaseSettings):
     logger_overrides: Dict[str, str | int] = Field(
         default_factory=_default_logger_overrides
     )
+    ui: UIConfig = Field(default_factory=UIConfig)
 
     try:
         version: str = pkg_version("llm_aggregator")
@@ -50,6 +57,7 @@ class Settings(BaseSettings):
             object.__setattr__(self, "logger_overrides", {})
         # Validate model_info_sources immediately so startup fails fast on bad config.
         build_sources_from_config(self.model_info_sources)
+        _validate_ui_config(self.ui)
 
     @property
     def fetch_models_interval(self) -> int:
@@ -104,3 +112,32 @@ def _resolve_config_path() -> Path:
     if not yaml_path.is_file():
         raise FileNotFoundError(f"Config file {yaml_path} does not exist")
     return yaml_path
+
+
+def _validate_ui_config(ui: UIConfig) -> None:
+    if not ui.static_enabled:
+        return
+
+    static_root = ui.resolve_static_root()
+    _ensure_readable_dir(static_root, "UI static directory")
+
+    index_path = static_root / "index.html"
+    _ensure_readable_file(index_path, "UI index.html")
+
+
+def _ensure_readable_dir(path: Path, label: str) -> None:
+    if not path.exists():
+        raise FileNotFoundError(f"{label} {path} does not exist")
+    if not path.is_dir():
+        raise NotADirectoryError(f"{label} {path} is not a directory")
+    if not os.access(path, os.R_OK):
+        raise PermissionError(f"{label} {path} is not readable")
+
+
+def _ensure_readable_file(path: Path, label: str) -> None:
+    if not path.exists():
+        raise FileNotFoundError(f"{label} {path} does not exist")
+    if not path.is_file():
+        raise FileNotFoundError(f"{label} {path} is not a file")
+    if not os.access(path, os.R_OK):
+        raise PermissionError(f"{label} {path} is not readable")
