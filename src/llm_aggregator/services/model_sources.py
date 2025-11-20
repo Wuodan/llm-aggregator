@@ -22,8 +22,16 @@ async def _fetch_models_for_provider(
     url = f"{base}/models"
     settings = get_settings()
 
+    headers = None
+    if provider.api_key:
+        headers = {"Authorization": f"Bearer {provider.api_key}"}
+
     try:
-        async with session.get(url, timeout=settings.fetch_models_timeout) as r:
+        async with session.get(
+            url,
+            timeout=settings.fetch_models_timeout,
+            headers=headers,
+        ) as r:
             if r.status >= 400:
                 text = await r.text()
                 logging.error(

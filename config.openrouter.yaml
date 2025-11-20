@@ -13,11 +13,11 @@ logger_overrides:
 
 brain:
   # URL of the provider where the enrichment model is hosted
-  base_url: "http://10.7.2.100:8080/v1"
+  base_url: "https://openrouter.ai/api/v1"
   # Model used by the brain to enrich model metadata
-  id: "unsloth/GLM-4.6-GGUF:UD-IQ2_XXS"
+  id: "qwen/qwen-2.5-coder-32b-instruct:free"
   # If set, send Authorization: Bearer <API-KEY> for calls to this port
-  api_key: "unsloth/GLM-4.6-GGUF:UD-IQ2_XXS"
+  api_key: "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"
   # Maximum number of models to enrich in a single batch
   max_batch_size: 1
 
@@ -30,14 +30,6 @@ time:
   enrich_models_timeout: 120
   # for enrichment loop when queue is empty
   enrich_idle_sleep: 5
-
-ui:
-  # Controls whether FastAPI serves static assets (either the bundled UI or a custom bundle).
-  static_enabled: true
-  # Optional custom UI bundle directory. Leave unset/null to use the built-in dashboard.
-  # Custom bundles must contain a readable index.html at their root.
-  # When static_enabled is false, nothing is served at "/" or "/static" even if a path is provided.
-  custom_static_path: null
 
 providers:
   - base_url: http://10.7.2.100:8080/v1

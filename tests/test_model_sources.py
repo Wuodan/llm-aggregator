@@ -102,8 +102,8 @@ class FakeSession:
         self.response = response
         self.requested = None
 
-    def get(self, url, timeout):
-        self.requested = (url, timeout)
+    def get(self, url, timeout, headers=None):
+        self.requested = {"url": url, "timeout": timeout, "headers": headers}
         return self.response
 
 
@@ -124,7 +124,7 @@ def test_fetch_models_parses_dict_payload(monkeypatch):
 
         models = await model_sources_module._fetch_models_for_provider(session, provider)
         assert [m.key.id for m in models] == ["alpha", "beta"]
-        assert session.requested[0].endswith("/v1/models")
+        assert session.requested["url"].endswith("/v1/models")
 
     asyncio.run(_run())
 
@@ -158,11 +158,29 @@ def test_fetch_models_handles_transport_failure(monkeypatch):
         provider = _provider("host-d")
 
         class RaisingSession:
-            def get(self, url, timeout):
+            def get(self, url, timeout, headers=None):
                 raise RuntimeError("boom")
 
         monkeypatch.setattr(model_sources_module, "get_settings", lambda: _settings_with_timeout())
         models = await model_sources_module._fetch_models_for_provider(RaisingSession(), provider)
         assert models == []
+
+    asyncio.run(_run())
+
+
+def test_fetch_models_uses_provider_api_key(monkeypatch):
+    async def _run():
+        provider = ProviderConfig(
+            base_url="https://host-e.example/v1",
+            internal_base_url="http://host-e:8000/v1",
+            api_key="secret",
+        )
+        payload = {"data": [{"id": "alpha"}]}
+        session = FakeSession(FakeResponse(payload=payload))
+
+        monkeypatch.setattr(model_sources_module, "get_settings", lambda: _settings_with_timeout())
+
+        await model_sources_module._fetch_models_for_provider(session, provider)
+        assert session.requested["headers"] == {"Authorization": "Bearer secret"}
 
     asyncio.run(_run())

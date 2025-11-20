@@ -31,6 +31,7 @@ class ProviderConfig:
 
     base_url: str  # public/external URL exposed via API responses
     internal_base_url: str | None = field(default=None)
+    api_key: str | None = field(default=None, repr=False, compare=False)
 
     def __post_init__(self):
         # If not explicitly set, default to base_url
@@ -41,11 +42,18 @@ class ProviderConfig:
     def from_api_dict(cls, raw: Dict[str, Any]) -> ProviderConfig | None:
         base_url = raw.get("base_url")
         internal_base_url = raw.get("internal_base_url")
+        api_key = raw.get("api_key")
 
-        if not isinstance(base_url, str) or not isinstance(internal_base_url, str):
+        if not isinstance(base_url, str):
             return None
 
-        return cls(base_url=base_url, internal_base_url=internal_base_url)
+        if internal_base_url is not None and not isinstance(internal_base_url, str):
+            return None
+
+        if api_key is not None and not isinstance(api_key, str):
+            return None
+
+        return cls(base_url=base_url, internal_base_url=internal_base_url, api_key=api_key)
 
 
 @dataclass(frozen=True)

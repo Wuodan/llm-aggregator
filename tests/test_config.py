@@ -27,6 +27,7 @@ def test_settings_load_from_custom_yaml(tmp_path, monkeypatch):
         providers:
           - base_url: https://public-p1.example/v1
             internal_base_url: http://p1:9000/v1
+            api_key: provider-secret
           - base_url: https://public-p2.example/v1
         model_info_sources:
           - name: "TestSource"
@@ -60,8 +61,10 @@ def test_settings_load_from_custom_yaml(tmp_path, monkeypatch):
     assert settings.providers[0].base_url == "https://public-p1.example/v1"
     assert settings.providers[0].internal_base_url == "http://p1:9000/v1"
     # Defaults to base_url when not provided
+    assert settings.providers[0].api_key == "provider-secret"
     assert settings.providers[1].base_url == "https://public-p2.example/v1"
     assert settings.providers[1].internal_base_url == "https://public-p2.example/v1"
+    assert settings.providers[1].api_key is None
     assert settings.model_info_sources[0].name == "TestSource"
     assert settings.ui.static_enabled is True
     assert settings.ui.custom_static_path is None

@@ -66,7 +66,7 @@ Use [config.yaml](config.yaml) as a reference template.
 - **brain** – Settings for the enrichment LLM:
   - `base_url` – HTTP endpoint of the enrichment provider.
   - `id` – Model identifier passed to the provider.
-  - `api_key` – Optional bearer token injected into requests.
+  - `api_key` – Optional API-Key.
   - `max_batch_size` – Number of models to enrich at once (defaults to 1).
 - **time** – Background scheduling knobs (all in seconds):
   - `fetch_models_interval`
@@ -76,8 +76,9 @@ Use [config.yaml](config.yaml) as a reference template.
 - **providers** – Each entry describes an OpenAI-compatible backend to query:
   - `base_url` – Public URL returned via the REST API.
   - `internal_base_url` – Optional internal URL used for server-to-server calls; defaults to `base_url` when omitted.
-- **model_info_sources** – Optional list of external websites where markdown context is fetched for enrichment prompts.
-  Each entry requires a human-readable `name` (shown to the LLM) and a `url_template` that contains `{model_id}`; leave the list empty to skip this enrichment.
+  - `api_key` – Optional API-Key for that provider.
+- **model_info_sources** – Optional external websites where model information is fetched from for enrichment.
+  Each entry requires a human-readable `name` (shown to the LLM) and a `url_template` that contains `{model_id}`.
 - **ui** – Optional static UI:
   - `static_enabled` – When `true` then a web frontend is served at `/index.html` and assets at `/static`.
   - `custom_static_path` – Optional directory that replaces the bundled UI; must contain a readable `index.html` and
