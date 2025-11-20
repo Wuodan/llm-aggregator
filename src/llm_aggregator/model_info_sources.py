@@ -18,10 +18,10 @@ class WebsiteSource:
 
 
 def build_sources_from_config(
-    configs: Sequence[ModelInfoSourceConfig],
+    configs: Sequence[ModelInfoSourceConfig] | None,
 ) -> tuple[WebsiteSource, ...]:
     if not configs:
-        raise ValueError("model_info_sources must declare at least one source")
+        return ()
 
     sources: list[WebsiteSource] = []
     seen_keys: set[str] = set()

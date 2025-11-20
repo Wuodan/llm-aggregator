@@ -35,3 +35,7 @@ def test_build_sources_rejects_duplicate_names():
 
     with pytest.raises(ValueError):
         build_sources_from_config(configs)
+
+
+def test_build_sources_allows_empty_config():
+    assert build_sources_from_config([]) == ()

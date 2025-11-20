@@ -38,7 +38,7 @@ class Settings(BaseSettings):
     brain: BrainConfig
     time: TimeConfig
     providers: List[ProviderConfig]
-    model_info_sources: List[ModelInfoSourceConfig]
+    model_info_sources: List[ModelInfoSourceConfig] | None = Field(default=None)
     logger_overrides: Dict[str, str | int] = Field(
         default_factory=_default_logger_overrides
     )
@@ -55,6 +55,8 @@ class Settings(BaseSettings):
         # Ensure logger_overrides always has a dict (even when YAML sets null)
         if self.logger_overrides is None:
             object.__setattr__(self, "logger_overrides", {})
+        if self.model_info_sources is None:
+            object.__setattr__(self, "model_info_sources", [])
         # Validate model_info_sources immediately so startup fails fast on bad config.
         build_sources_from_config(self.model_info_sources)
         _validate_ui_config(self.ui)

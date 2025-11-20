@@ -76,8 +76,8 @@ Use [config.yaml](config.yaml) as a reference template.
 - **providers** – Each entry describes an OpenAI-compatible backend to query:
   - `base_url` – Public URL returned via the REST API.
   - `internal_base_url` – Optional internal URL used for server-to-server calls; defaults to `base_url` when omitted.
-- **model_info_sources** – Ordered list of external websites where markdown context is fetched for enrichment prompts.
-  Each entry requires a human-readable `name` (shown to the LLM) and a `url_template` that contains `{model_id}`.
+- **model_info_sources** – Optional list of external websites where markdown context is fetched for enrichment prompts.
+  Each entry requires a human-readable `name` (shown to the LLM) and a `url_template` that contains `{model_id}`; leave the list empty to skip this enrichment.
 - **ui** – Optional static UI:
   - `static_enabled` – When `true` then a web frontend is served at `/index.html` and assets at `/static`.
   - `custom_static_path` – Optional directory that replaces the bundled UI; must contain a readable `index.html` and

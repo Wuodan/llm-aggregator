@@ -80,6 +80,39 @@ def test_missing_config_env_var_raises(monkeypatch):
         config_module._settings = None
 
 
+def test_model_info_sources_optional(tmp_path, monkeypatch):
+    cfg = textwrap.dedent(
+        """
+        host: "0.0.0.0"
+        port: 1
+        brain:
+          base_url: "http://brain"
+          id: "brain"
+        time:
+          fetch_models_interval: 1
+          fetch_models_timeout: 1
+          enrich_models_timeout: 1
+          enrich_idle_sleep: 1
+        providers:
+          - base_url: "http://provider"
+        ui:
+          static_enabled: false
+          custom_static_path: null
+        """
+    ).strip()
+    path = tmp_path / "no-sources.yaml"
+    path.write_text(cfg)
+
+    monkeypatch.setenv(CONFIG_ENV_VAR, str(path))
+    config_module._settings = None
+
+    settings = config_module.get_settings()
+    try:
+        assert settings.model_info_sources == []
+    finally:
+        config_module._settings = None
+
+
 def _write_ui_bundle(path):
     path.mkdir(parents=True, exist_ok=True)
     (path / "index.html").write_text("<html></html>", encoding="utf-8")
