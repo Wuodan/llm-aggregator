@@ -18,6 +18,7 @@ from .model_info_sources import build_sources_from_config
 from .models import (
     ProviderConfig,
     BrainConfig,
+    BrainPromptsConfig,
     TimeConfig,
     ModelInfoSourceConfig,
     UIConfig,
@@ -36,6 +37,7 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     log_format: str | None = None
     brain: BrainConfig
+    brain_prompts: BrainPromptsConfig
     time: TimeConfig
     providers: List[ProviderConfig]
     model_info_sources: List[ModelInfoSourceConfig] | None = Field(default=None)

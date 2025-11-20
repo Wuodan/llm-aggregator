@@ -38,6 +38,10 @@ def test_settings_load_from_custom_yaml(tmp_path, monkeypatch):
         ui:
           static_enabled: true
           custom_static_path: null
+        brain_prompts:
+          system: "system"
+          user: "user"
+          model_info_prefix_template: "prefix"
         """
     ).strip()
     path = tmp_path / "test-config.yaml"
@@ -54,6 +58,9 @@ def test_settings_load_from_custom_yaml(tmp_path, monkeypatch):
     assert settings.brain.base_url == "http://brain:8088/v1"
     assert settings.brain.id == "brain-model"
     assert settings.brain.api_key is None
+    assert settings.brain_prompts.system == "system"
+    assert settings.brain_prompts.user == "user"
+    assert settings.brain_prompts.model_info_prefix_template == "prefix"
     assert settings.log_level == "INFO"
     assert settings.log_format is None
     assert settings.logger_overrides["extract2md"] == "warning"
@@ -101,6 +108,10 @@ def test_model_info_sources_optional(tmp_path, monkeypatch):
         ui:
           static_enabled: false
           custom_static_path: null
+        brain_prompts:
+          system: "system"
+          user: "user"
+          model_info_prefix_template: "prefix"
         """
     ).strip()
     path = tmp_path / "no-sources.yaml"
@@ -146,6 +157,10 @@ def test_invalid_builtin_static_path_raises(tmp_path, monkeypatch):
         ui:
           static_enabled: true
           custom_static_path: null
+        brain_prompts:
+          system: "system"
+          user: "user"
+          model_info_prefix_template: "prefix"
         """
     ).strip()
     path = tmp_path / "bad-ui.yaml"
@@ -187,6 +202,10 @@ def test_invalid_custom_static_path_raises(tmp_path, monkeypatch):
         ui:
           static_enabled: true
           custom_static_path: "{tmp_path / "custom-missing"}"
+        brain_prompts:
+          system: "system"
+          user: "user"
+          model_info_prefix_template: "prefix"
         """
     ).strip()
     path = tmp_path / "bad-custom-ui.yaml"
@@ -229,6 +248,10 @@ def test_custom_static_path_parses_when_present(tmp_path, monkeypatch):
         ui:
           static_enabled: true
           custom_static_path: "{custom_path}"
+        brain_prompts:
+          system: "system"
+          user: "user"
+          model_info_prefix_template: "prefix"
         """
     ).strip()
     path = tmp_path / "custom-ui.yaml"
@@ -274,6 +297,10 @@ def test_invalid_model_info_source_template_raises(tmp_path, monkeypatch):
         model_info_sources:
           - name: "Broken"
             url_template: "https://example.com/"
+        brain_prompts:
+          system: "system"
+          user: "user"
+          model_info_prefix_template: "prefix"
         """
     ).strip()
     path = tmp_path / "bad-config.yaml"

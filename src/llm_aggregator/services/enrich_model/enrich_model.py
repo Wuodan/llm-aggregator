@@ -4,9 +4,9 @@ import json
 import logging
 from typing import List
 
+from llm_aggregator.config import get_settings
 from llm_aggregator.models import EnrichedModel, ModelInfo
 from llm_aggregator.services.brain_client.brain_client import chat_completions
-from llm_aggregator.services.enrich_model._const import ENRICH_SYSTEM_PROMPT, ENRICH_USER_PROMPT
 from llm_aggregator.services.enrich_model._map_enrich_result import _map_enrich_result
 from llm_aggregator.services.model_info import fetch_model_markdown
 from ._extract_json_object import _extract_json_object
@@ -21,16 +21,22 @@ async def enrich_batch(model_infos: List[ModelInfo]) -> List[EnrichedModel]:
     if not model_infos:
         return []
 
+    settings = get_settings()
+    brain_config = settings.brain
+    prompts_config = settings.brain_prompts
     aggregated: List[EnrichedModel] = []
     for model in model_infos:
         input_models = {model.key: model}
         api_model_infos = [model.to_api_dict()]
         models_json = json.dumps(api_model_infos, ensure_ascii=False)
 
-        info_messages = await _build_info_messages(model)
+        info_messages = await _build_info_messages(
+            model,
+            prompts_config.model_info_prefix_template,
+        )
         messages = [
-            {"role": "system", "content": ENRICH_SYSTEM_PROMPT},
-            {"role": "user", "content": ENRICH_USER_PROMPT},
+            {"role": "system", "content": prompts_config.system},
+            {"role": "user", "content": prompts_config.user},
             *info_messages,
             {"role": "user", "content": models_json},
         ]
@@ -48,14 +54,49 @@ async def enrich_batch(model_infos: List[ModelInfo]) -> List[EnrichedModel]:
     return aggregated
 
 
-async def _build_info_messages(model: ModelInfo) -> list[dict[str, str]]:
+async def _build_info_messages(
+    model: ModelInfo,
+    snippet_prefix_template: str,
+) -> list[dict[str, str]]:
     snippets = await fetch_model_markdown(model)
     messages: list[dict[str, str]] = []
     for snippet in snippets:
-        prefix = f"Model-Info for {snippet.model_id} from {snippet.source.provider_label}:"
-        content = f"{prefix}\n\n{snippet.markdown.strip()}"
+        prefix = _render_snippet_prefix(
+            snippet_prefix_template,
+            snippet.model_id,
+            snippet.source.provider_label,
+        )
+        markdown = snippet.markdown.strip()
+        content = f"{prefix}\n\n{markdown}" if prefix else markdown
         messages.append({"role": "user", "content": content})
     return messages
+
+
+def _render_snippet_prefix(
+    template: str,
+    model_id: str,
+    provider_label: str,
+) -> str:
+    normalized_template = template or ""
+    if not normalized_template.strip():
+        return ""
+
+    try:
+        return normalized_template.format(
+            model_id=model_id,
+            provider_label=provider_label,
+        )
+    except KeyError as exc:
+        logging.error(
+            "brain_prompts.model_info_prefix_template has unknown placeholder: %s",
+            exc,
+        )
+    except Exception as exc:  # pragma: no cover - defensive logging
+        logging.error(
+            "brain_prompts.model_info_prefix_template formatting failed: %r",
+            exc,
+        )
+    return normalized_template
 
 
 async def _get_enriched_list(payload: dict[str, str | list[dict[str, str]] | float]) -> list:

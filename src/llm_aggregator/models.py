@@ -17,6 +17,21 @@ class BrainConfig:
 
 
 @dataclass(frozen=True)
+class BrainPromptsConfig:
+    """Prompts used for the enrichment brain."""
+
+    system: str
+    user: str
+    model_info_prefix_template: str = ""
+
+    def __post_init__(self) -> None:
+        if not self.system.strip():
+            raise ValueError("brain_prompts.system must not be empty")
+        if not self.user.strip():
+            raise ValueError("brain_prompts.user must not be empty")
+
+
+@dataclass(frozen=True)
 class TimeConfig:
     # Values by default in seconds
     fetch_models_interval: int = 60

@@ -83,6 +83,14 @@ By default, the web interface will be available at `http://localhost:8888`.
 All runtime behavior is controlled through the YAML file pointed to by the `LLM_AGGREGATOR_CONFIG` environment variable.
 Use [config.yaml](config.yaml) as a reference template.
 
+### UI modes
+
+Use `static_enabled` and `custom_static_path` to set one of three modes:
+
+- `static_enabled: true` (default) serves the built-in UI.
+- `static_enabled: true` and `custom_static_path: /path/to/dir` serves your files instead of the built-in UI.
+- `static_enabled: false` serves no UI at all. Provide your own UI using the REST endpoints.
+
 ### Configuration Options
 
 - **host / port** – Where the FastAPI server and static frontend bind.
@@ -96,29 +104,25 @@ Use [config.yaml](config.yaml) as a reference template.
   - `id` – Model identifier passed to the provider.
   - `api_key` – Optional API-Key.
   - `max_batch_size` – Number of models to enrich at once (defaults to 1).
-- **time** – Background scheduling knobs (all in seconds):
-  - `fetch_models_interval`
-  - `fetch_models_timeout`
-  - `enrich_models_timeout`
-  - `enrich_idle_sleep`
 - **providers** – Each entry describes an OpenAI-compatible backend to query:
   - `base_url` – Public URL returned via the REST API.
   - `internal_base_url` – Optional internal URL used for server-to-server calls; defaults to `base_url` when omitted.
   - `api_key` – Optional API-Key for that provider.
 - **model_info_sources** – Optional external websites where model information is fetched from for enrichment.
   Each entry requires a human-readable `name` (shown to the LLM) and a `url_template` that contains `{model_id}`.
+- **time** – Background scheduling knobs (all in seconds):
+  - `fetch_models_interval`
+  - `fetch_models_timeout`
+  - `enrich_models_timeout`
+  - `enrich_idle_sleep`
 - **ui** – Optional static UI:
   - `static_enabled` – `true`: static web frontend is served at `/index.html` and assets at `/static`.
   - `custom_static_path` – Optional directory to replace the bundled UI; must contain a readable `index.html` and
     asset files.
-
-### UI modes
-
-Use `static_enabled` and `custom_static_path` to set one of three modes:
-
-- `static_enabled: true` (default) serves the built-in UI.
-- `static_enabled: true` and `custom_static_path: /path/to/dir` serves your files instead of the built-in UI.
-- `static_enabled: false` serves no UI at all. Provide your own UI using the REST endpoints.
+- **brain_prompts** – LLM instructions kept separate so the block can live at the end of the YAML:
+  - `system` – System message injected ahead of every enrichment request.
+  - `user` – Main user instruction describing the enrichment JSON contract.
+  - `model_info_prefix_template` – Optional prefix template applied to fetched markdown snippets; receives `{model_id}` and `{provider_label}` placeholders.
 
 ---
 
