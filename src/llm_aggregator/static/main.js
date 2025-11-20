@@ -1,6 +1,6 @@
-(function() {
+(() => {
   const apiBaseEl = document.getElementById('apiBaseScript');
-  const apiBase = (apiBaseEl && apiBaseEl.dataset.apiBase) || '';
+  const apiBase = (apiBaseEl?.dataset.apiBase) || '';
 
   const tbl = document.getElementById('tbl');
   const tbody = tbl.querySelector('tbody');
@@ -42,8 +42,8 @@
 
   async function loadModels() {
     try {
-      const res = await fetch(apiBase + '/v1/models');
-      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const res = await fetch(`${apiBase}/v1/models`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       const models = json.data || [];
 
@@ -53,24 +53,24 @@
         const id = model.id || '';
         const llm_aggregator = model.llm_aggregator || {};
         tr.innerHTML = [
-          '<td>' + (id) + '</td>',
-          '<td>' + (llm_aggregator.base_url || '') + '</td>',
-          '<td>' + (
+          `<td>${id}</td>`,
+          `<td>${llm_aggregator.base_url || ''}</td>`,
+          `<td>${
             Array.isArray(llm_aggregator.types)
               ? llm_aggregator.types.join(', ')
-              : (llm_aggregator.types || '')
-          ) + '</td>',
-          '<td>' + (llm_aggregator.model_family || '') + '</td>',
-          '<td>' + (llm_aggregator.context_size || '') + '</td>',
-          '<td>' + (llm_aggregator.quant || '') + '</td>',
-          '<td>' + (llm_aggregator.param || '') + '</td>',
-          '<td>' + (llm_aggregator.summary || '') + '</td>'
+              : llm_aggregator.types || ''
+          }</td>`,
+          `<td>${llm_aggregator.model_family || ''}</td>`,
+          `<td>${llm_aggregator.context_size || ''}</td>`,
+          `<td>${llm_aggregator.quant || ''}</td>`,
+          `<td>${llm_aggregator.param || ''}</td>`,
+          `<td>${llm_aggregator.summary || ''}</td>`
         ].join('');
         tbody.appendChild(tr);
       });
 
       tbl.style.display = models.length ? '' : 'none';
-      updatedEl.textContent = 'Last update: ' + new Date().toLocaleTimeString();
+      updatedEl.textContent = `Last update: ${new Date().toLocaleTimeString()}`;
     } catch (err) {
       console.warn('loadModels failed', err);
       updatedEl.textContent = 'Failed to load models';
@@ -81,8 +81,8 @@
   async function refreshStats() {
     if (!statsChart) return;
     try {
-      const res = await fetch(apiBase + '/api/stats');
-      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const res = await fetch(`${apiBase}/api/stats`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       if (!Array.isArray(data)) return;
 
@@ -97,9 +97,9 @@
   async function clearData() {
     if (!confirm('Try it!\nWatch AI recreate the info!')) return;
     try {
-      const res = await fetch(apiBase + '/api/clear', { method: 'POST' });
+      const res = await fetch(`${apiBase}/api/clear`, { method: 'POST' });
       if (!res.ok) {
-        alert('Failed to clear data (' + res.status + ')');
+        alert(`Failed to clear data (${res.status})`);
         return;
       }
       await loadModels();
