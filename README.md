@@ -20,10 +20,10 @@ The builtin UI shows a single table plus a small RAM widget, so you immediately 
 
 <!-- pyml disable line-length -->
 
-| Model       | Base URL                     | Types     | Family    | Context | Quant    | Params | Summary                        |
-|-------------|------------------------------|-----------|-----------|---------|----------|--------|--------------------------------|
-| llama3.1:8b | `http://10.7.2.100:11434/v1` | llm       | Llama 3.1 | 8K      | Q4\_K\_M | 8B     | General chat tuned for balance |
-| qwen2.5:14b | `http://10.7.2.100:8080/v1`  | llm,embed | Qwen 2.5  | 32K     | Q5\_0    | 14B    | Multilingual reasoning focused |
+| Model       | Base URL                     | Types     | Family    | Context | Quant  | Params | Summary                        |
+|-------------|------------------------------|-----------|-----------|---------|--------|--------|--------------------------------|
+| llama3.1:8b | `http://10.7.2.100:11434/v1` | llm       | Llama 3.1 | 8K      | Q4_K_M | 8B     | General chat tuned for balance |
+| qwen2.5:14b | `http://10.7.2.100:8080/v1`  | llm,embed | Qwen 2.5  | 32K     | Q5_0   | 14B    | Multilingual reasoning focused |
 
 <!-- pyml enable line-length -->
 
