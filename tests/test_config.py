@@ -313,3 +313,95 @@ def test_invalid_model_info_source_template_raises(tmp_path, monkeypatch):
             config_module.get_settings()
     finally:
         config_module._settings = None
+
+
+def test_files_size_gatherer_config_parses(tmp_path, monkeypatch):
+    cfg = textwrap.dedent(
+        f"""
+        host: "0.0.0.0"
+        port: 1
+        brain:
+          base_url: "http://brain"
+          id: "brain"
+        time:
+          fetch_models_interval: 1
+          fetch_models_timeout: 1
+          enrich_models_timeout: 1
+          enrich_idle_sleep: 1
+        providers:
+          - base_url: "http://provider-a"
+            files_size_gatherer:
+              base_path: "{tmp_path}"
+              path: "/usr/bin/size-a"
+              timeout_seconds: 5
+          - base_url: "http://provider-b"
+            files_size_gatherer:
+              base_path: "/models"
+              path: "/usr/bin/size-b"
+        ui:
+          static_enabled: false
+          custom_static_path: null
+        brain_prompts:
+          system: "system"
+          user: "user"
+          model_info_prefix_template: "prefix"
+        """
+    ).strip()
+    path = tmp_path / "files-size.yaml"
+    path.write_text(cfg)
+
+    monkeypatch.setenv(CONFIG_ENV_VAR, str(path))
+    config_module._settings = None
+
+    settings = config_module.get_settings()
+    try:
+        g1 = settings.providers[0].files_size_gatherer
+        assert g1 is not None
+        assert g1.base_path == str(tmp_path)
+        assert g1.timeout_seconds == 5
+        assert g1.path == "/usr/bin/size-a"
+
+        g2 = settings.providers[1].files_size_gatherer
+        assert g2 is not None
+        assert g2.path == "/usr/bin/size-b"
+    finally:
+        config_module._settings = None
+
+
+def test_custom_files_size_gatherer_requires_path(tmp_path, monkeypatch):
+    cfg = textwrap.dedent(
+        """
+        host: "0.0.0.0"
+        port: 1
+        brain:
+          base_url: "http://brain"
+          id: "brain"
+        time:
+          fetch_models_interval: 1
+          fetch_models_timeout: 1
+          enrich_models_timeout: 1
+          enrich_idle_sleep: 1
+        providers:
+          - base_url: "http://provider"
+            files_size_gatherer:
+              base_path: "/models"
+        ui:
+          static_enabled: false
+          custom_static_path: null
+        brain_prompts:
+          system: "system"
+          user: "user"
+          model_info_prefix_template: "prefix"
+        """
+    ).strip()
+    path = tmp_path / "bad-files-size.yaml"
+    path.write_text(cfg)
+
+    monkeypatch.setenv(CONFIG_ENV_VAR, str(path))
+    config_module._settings = None
+
+    try:
+        with pytest.raises(ValueError):
+            config_module.get_settings()
+    finally:
+        config_module._settings = None

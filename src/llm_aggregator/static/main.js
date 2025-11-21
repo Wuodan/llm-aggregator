@@ -51,20 +51,20 @@
       models.forEach(model => {
         const tr = document.createElement('tr');
         const id = model.id || '';
-        const llm_aggregator = model.llm_aggregator || {};
+        const meta = model.meta || {};
         tr.innerHTML = [
           `<td>${id}</td>`,
-          `<td>${llm_aggregator.base_url || ''}</td>`,
+          `<td>${meta.base_url || ''}</td>`,
           `<td>${
-            Array.isArray(llm_aggregator.types)
-              ? llm_aggregator.types.join(', ')
-              : llm_aggregator.types || ''
+            Array.isArray(meta.types)
+              ? meta.types.join(', ')
+              : meta.types || ''
           }</td>`,
-          `<td>${llm_aggregator.model_family || ''}</td>`,
-          `<td>${llm_aggregator.context_size || ''}</td>`,
-          `<td>${llm_aggregator.quant || ''}</td>`,
-          `<td>${llm_aggregator.param || ''}</td>`,
-          `<td>${llm_aggregator.summary || ''}</td>`
+          `<td>${meta.model_family || ''}</td>`,
+          `<td>${meta.context_size || ''}</td>`,
+          `<td>${meta.quant || ''}</td>`,
+          `<td>${meta.param || ''}</td>`,
+          `<td>${meta.summary || ''}</td>`
         ].join('');
         tbody.appendChild(tr);
       });

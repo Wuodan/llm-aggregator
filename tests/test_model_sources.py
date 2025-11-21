@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 
-from llm_aggregator.models import ModelInfo, ModelKey, ProviderConfig
+from llm_aggregator.models import Model, ProviderConfig, make_model
 from llm_aggregator.services import model_sources as model_sources_module
 
 
@@ -10,9 +10,8 @@ def _provider(name: str) -> ProviderConfig:
     return ProviderConfig(base_url=f"https://{name}.example/v1", internal_base_url=f"http://{name}:8000/v1")
 
 
-def _build_model(provider: ProviderConfig, idx: int) -> ModelInfo:
-    key = ModelKey(provider=provider, id=f"model-{idx}")
-    return ModelInfo(key=key, raw={"id": key.id})
+def _build_model(provider: ProviderConfig, idx: int) -> Model:
+    return make_model(provider, {"id": f"model-{idx}"})
 
 
 def test_gather_models_combines_and_sorts(monkeypatch):
@@ -36,13 +35,13 @@ def test_gather_models_combines_and_sorts(monkeypatch):
         monkeypatch.setattr(model_sources_module, "_fetch_models_for_provider", fake_fetch)
 
         models = await model_sources_module.gather_models()
-        assert [m.key.provider.base_url for m in models] == [
+        assert [m.meta.base_url for m in models] == [
             "https://provider-a.example/v1",
             "https://provider-a.example/v1",
             "https://provider-b.example/v1",
             "https://provider-b.example/v1",
         ]
-        assert models[0].key.id == "model-1"
+        assert models[0].id == "model-1"
 
     asyncio.run(_run())
 
@@ -69,7 +68,7 @@ def test_gather_models_logs_and_skips_failed_provider(monkeypatch, caplog):
         with caplog.at_level("ERROR"):
             models = await model_sources_module.gather_models()
 
-        assert [m.key.provider.base_url for m in models] == ["https://provider-c.example/v1"]
+        assert [m.meta.base_url for m in models] == ["https://provider-c.example/v1"]
         assert any("boom" in rec.message for rec in caplog.records)
 
     asyncio.run(_run())
@@ -123,7 +122,7 @@ def test_fetch_models_parses_dict_payload(monkeypatch):
         monkeypatch.setattr(model_sources_module, "get_settings", lambda: _settings_with_timeout())
 
         models = await model_sources_module._fetch_models_for_provider(session, provider)
-        assert [m.key.id for m in models] == ["alpha", "beta"]
+        assert [m.id for m in models] == ["alpha", "beta"]
         assert session.requested["url"].endswith("/v1/models")
 
     asyncio.run(_run())

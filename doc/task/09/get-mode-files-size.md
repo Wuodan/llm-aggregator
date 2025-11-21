@@ -103,3 +103,13 @@ The script/executable will then by my code be called as in:
 ```
 
 The script shall print the file size in bytes to stdout.
+
+## Helper scripts
+
+This repository includes ready-made helpers under `scripts/` (packaged to
+`<site-packages>/llm_aggregator/scripts/` when installed):
+- `files-size-ollama.sh`
+- `files-size-llama-cpp.sh`
+- `files-size-nexa.sh`
+
+Each script accepts `<base_path> <full_model_name>` and prints the total size in bytes.

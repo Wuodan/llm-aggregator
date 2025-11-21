@@ -129,7 +129,7 @@ Use `static_enabled` and `custom_static_path` to set one of three modes:
 
 ## REST API
 
-- `GET /v1/models` – OpenAI `ListModelsResponse` plus an `llm_aggregator` object on each `data` item with the enriched
+- `GET /v1/models` – OpenAI `ListModelsResponse` plus a `meta` object on each `data` item with the enriched
   metadata. Example:
 
   ```json
@@ -141,13 +141,14 @@ Use `static_enabled` and `custom_static_path` to set one of three modes:
         "object": "model",
         "created": 1,
         "owned_by": "ollama",
-        "llm_aggregator": {
+        "meta": {
           "base_url": "http://127.0.0.1:11434/v1",
           "types": ["llm"],
           "model_family": "Llama 3.1",
           "context_size": "8K",
           "quant": "Q4_K_M",
           "param": "8B",
+          "size": 481406976,
           "summary": "General chat tuned for balance"
         }
       }
