@@ -1,51 +1,41 @@
-# Task 09: Gather model files size
+# Task 09: Model File Size Gathering
 
-Per model, I want to add the total file size on disk of the model to the output information.
+## Goal
+Annotate each model with its total on-disk size (bytes) via a per-provider gatherer, and expose that value to enrichment logic and `/v1/models`.
 
-Each provider (Ollama, nexa, llama.cpp, etc.) handles the files differently,
-see [get-mode-files-size.md](get-mode-files-size.md).
+## Background
+- Providers store files differently; see `doc/task/09/get-mode-files-size.md` for manual examples (nexa.ai, llama.cpp, Ollama).
+- The app tracks ~50 models, so file-size collection must *not* run during `/v1/models`. It may run per-model during the existing enrichment step (alongside website-to-markdown fetches) and can block that step; parallelizing the fetches is fine.
 
-So I need a kind of plugin system to implement the file size gathering for each provider.
+## Requirements
+1. **Config shape**
+   - Add an optional `files_size_gatherer` block to each provider config.
+   - Fields:
+     - `type`: enum of supported gatherers (`ollama`, `llama_cpp`, `nexa`, `custom`).
+     - `base_path` (or base URL): root where the provider stores model files.
+     - `path` (custom only): path to the script or executable.
+     - `args` (optional): extra arguments appended after the model name.
+   - Document the custom invocation contract: `<path> <base_path> <full_model_name> [arg1 ...]`; the script prints the size in bytes to stdout.
 
-So the config of each provider will get a new option structure `files_size_gatherer` with these fields:
+2. **Gathering behavior**
+   - Trigger file-size collection during per-model enrichment, never on the `/v1/models` list call.
+   - Run both website-to-markdown and file-size gathering in parallel for each model (fix the current non-parallel website call). Failures must not break model processing (log and return null/omit).
+   - Treat the size as an integer number of bytes.
 
-- type: type of gatherer
-  - for type `custom` we also need a `path to script or executable`
-- base path/url for execution: root path of where the provider stores the model files
-- optional additional arguments (at least for custom type)
+3. **Provider implementations**
+   - Built-in gatherers for `llama_cpp` and `nexa` should follow the wildcard strategy described in `get-mode-files-size.md` (replace `/` and `:` in model id with path-friendly wildcards, drop quant suffix where noted, glob with `*`, sum file sizes under `base_path`).
+   - Built-in gatherer for `ollama` should read the manifest under `base_path` and sum the `layers[*].size` values (see the doc for layout hints).
+   - The `custom` gatherer executes the configured script; ensure execution is sandboxed/safe and has timeouts/logging.
 
-Looking at how simple the llama.cpp and nexa.ai gatherers are in bash
+4. **Data surfaces**
+   - Store the size on the model metadata (e.g., `ModelInfo.files_size_bytes` or inside its `raw` data) so it can be sent to the “brain” LLM if needed.
+   - Add `llm_aggregator.files_size` to each entry in `GET /v1/models`, expressed in bytes.
+   - If gathering is disabled or fails, omit or null the field without failing the endpoint.
 
-pseudo-description of bash gatherer for llama.cpp and nexa:
+5. **Validation and docs**
+   - Tests: config parsing/validation, gatherer dispatch (including a stubbed custom script), error handling, and `/v1/models` responding with the new field when present.
+   - Add developer notes describing the config block, gatherer types, and pointers to `doc/task/09/get-mode-files-size.md`.
 
-- root-path plus model-name with `/` and `:` replaced by wildcard and quant removed plus postfix "*" gives all files
-- simply sum up file sizes
-
-And that the gatherer for Ollama could also be easily written in bash, I consider using only type `custom` and providing
-2-3 scripts for my current providers. What do you think?
-
-> Important: We have close to 50 models. So this file-size gathering shall not happen when `/v1/models` is called.  
-> It can however be done per model when model-information is gathered.
-
-Idea: Before we send the model information to the LLM, we already send 2 http-requests to gather model-information from
-websites.
-This model-website questioning is still acceptable to block the process as it's quite fast compared to the brain call
-which takes abount a minute.
-
-But we could:
-
-- parallelize the model-website to markdown calls
-- add a new parallelized call to gather the file size
-
-We also could send the file-szie to the brain LLM as it's just one number (either as new field in `ModelInfo` or inside
-ModelInfo.raw) - up to you.
-
-## Changes
-
-### REST endpoint
-
-My apps REST endpoint `GET /v1/models` shall have a new field in the `llm_aggregator` object: `files_size`
-
-### Config
-
-Additional optional structure `files_size_gatherer` as described above.
+## Out of Scope
+- UI/table changes; this is backend metadata only.
+- Time-consuming global scans during `/v1/models`; all gathering stays per-model at enrichment time.
