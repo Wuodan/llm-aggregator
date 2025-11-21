@@ -24,8 +24,8 @@ class DummyStore:
             {
                 "id": "m",
                 "object": "model",
-                "meta": {"size": 42},
-                "llm_aggregator": {
+                "meta": {
+                    "size": 42,
                     "base_url": "https://public-provider.example/v1",
                     "summary": "hello",
                 },
@@ -54,8 +54,8 @@ def test_v1_models_returns_snapshot(monkeypatch):
                 {
                     "id": "m",
                     "object": "model",
-                    "meta": {"size": 42},
-                    "llm_aggregator": {
+                    "meta": {
+                        "size": 42,
                         "base_url": "https://public-provider.example/v1",
                         "summary": "hello",
                     },

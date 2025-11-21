@@ -7,16 +7,16 @@ from typing import Any, Dict, List
 import aiohttp
 
 from ..config import get_settings
-from ..models import ModelKey, ModelInfo, ProviderConfig
+from ..models import Model, ProviderConfig, make_model
 
 
 async def _fetch_models_for_provider(
     session: aiohttp.ClientSession,
     provider: ProviderConfig,
-) -> List[ModelInfo]:
+) -> List[Model]:
     """Fetch model list from one provider endpoint, robustly.
 
-    Returns a list of ModelInfo entries. On any error, logs and returns an empty list.
+    Returns a list of Model entries. On any error, logs and returns an empty list.
     """
     base = provider.internal_base_url.rstrip("/")
     url = f"{base}/models"
@@ -80,19 +80,21 @@ async def _fetch_models_for_provider(
         )
         models_raw = []
 
-    result: List[ModelInfo] = []
+    result: List[Model] = []
     for m in models_raw:
         if isinstance(m, dict) and "id" in m:
-            model_key = ModelKey(provider=provider, id=str(m["id"]))
             # Store the provider payload so downstream responses can retain
             # every OpenAI field plus custom extensions verbatim.
-            result.append(ModelInfo(key=model_key, raw=dict(m)))
+            try:
+                result.append(make_model(provider, dict(m)))
+            except Exception as exc:
+                logging.error("Failed to build model from provider %s payload: %r", url, exc)
 
     logging.info("Fetched %d models from url %s", len(result), url)
     return result
 
 
-async def gather_models() -> List[ModelInfo]:
+async def gather_models() -> List[Model]:
     """Aggregate model lists from all configured providers.
 
     Uses settings.providers to know which base URLs to query.
@@ -106,7 +108,7 @@ async def gather_models() -> List[ModelInfo]:
             return_exceptions=True,
         )
 
-    all_models: List[ModelInfo] = []
+    all_models: List[Model] = []
     for idx, res in enumerate(results):
         if isinstance(res, Exception):
             p = providers[idx]
@@ -119,6 +121,6 @@ async def gather_models() -> List[ModelInfo]:
         all_models.extend(res)
 
     # sort by provider base_url, then by model id
-    all_models.sort(key=lambda m: (m.key.provider.base_url, m.key.id.lower()))
+    all_models.sort(key=lambda m: (m.meta.base_url, m.id.lower()))
     logging.info("Gathered %d models total", len(all_models))
     return all_models

@@ -40,7 +40,7 @@ async def list_models():
     """Return the OpenAI ListModelsResponse with aggregator metadata.
 
     Each entry follows the schema from doc/general/OpenAI-models-response.md and
-    adds an ``llm_aggregator`` object that mirrors our enrichment snapshot.
+    adds a ``meta`` object that mirrors provider and enrichment metadata.
     """
 
     snapshot = await store.get_snapshot()

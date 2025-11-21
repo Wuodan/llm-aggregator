@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 from extract2md import fetch_to_markdown
 
-from llm_aggregator.models import ModelInfo
+from llm_aggregator.models import Model
 from ._cache import WebsiteInfoCache
 from ._sources import WebsiteSource, get_website_sources
 
@@ -21,9 +21,9 @@ class WebsiteMarkdown:
     markdown: str
 
 
-async def fetch_model_markdown(model: ModelInfo) -> list[WebsiteMarkdown]:
+async def fetch_model_markdown(model: Model) -> list[WebsiteMarkdown]:
     """Return markdown snippets from known websites for the given model."""
-    normalized_id = _normalize_model_id(model.key.id)
+    normalized_id = _normalize_model_id(model.id)
     sources = get_website_sources()
     tasks = [
         _get_markdown_for_source(source, normalized_id)

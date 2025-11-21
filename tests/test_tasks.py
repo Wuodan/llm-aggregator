@@ -3,22 +3,21 @@ from __future__ import annotations
 import asyncio
 from types import SimpleNamespace
 
-from llm_aggregator.models import EnrichedModel, ModelInfo, ModelKey, ProviderConfig
+from llm_aggregator.models import Model, ProviderConfig, make_model
 from llm_aggregator.services import tasks as tasks_module
 
 
-def _model(idx: int) -> ModelInfo:
+def _model(idx: int) -> Model:
     provider = ProviderConfig(
         base_url=f"https://provider-{idx}.example/v1",
         internal_base_url=f"http://provider-{idx}:8000/v1",
     )
-    key = ModelKey(provider=provider, id=f"model-{idx}")
-    return ModelInfo(key=key, raw={"id": key.id})
+    return make_model(provider, {"id": f"model-{idx}"})
 
 
 class FakeStore:
     def __init__(self):
-        self.queue: list[ModelInfo] = []
+        self.queue: list[Model] = []
         self.updated = 0
         self.applied = 0
         self.requeued = 0
@@ -75,10 +74,10 @@ def test_background_tasks_manager_enrichment_flow(monkeypatch):
             if enrich_attempts["count"] == 1:
                 requeued.set()
                 return []
-            enriched = [
-                EnrichedModel(key=m.key, enriched={"summary": f"{m.key.id}-summary"})
-                for m in batch
-            ]
+            enriched = []
+            for m in batch:
+                m.meta["summary"] = f"{m.id}-summary"
+                enriched.append(m)
             applied.set()
             return enriched
 

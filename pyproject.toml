@@ -32,6 +32,7 @@ llm-aggregator = "llm_aggregator.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/llm_aggregator"]
+include = ["src/llm_aggregator/scripts/"]
 
 [tool.hatch.version]
 source = "vcs"

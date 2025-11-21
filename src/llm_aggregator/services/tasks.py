@@ -5,11 +5,11 @@ import logging
 import time
 from typing import List, Optional
 
+from ..config import get_settings
+from ..models import Model
 from .enrich_model.enrich_model import enrich_batch
 from .model_sources import gather_models
 from .model_store import ModelStore
-from ..config import get_settings
-from ..models import ModelInfo, EnrichedModel
 
 
 class BackgroundTasksManager:
@@ -40,7 +40,7 @@ class BackgroundTasksManager:
             try:
                 while not self._stopping.is_set():
                     try:
-                        models: List[ModelInfo] = await gather_models()
+                        models: List[Model] = await gather_models()
                         await self._store.update_models(models)
                     except asyncio.CancelledError:
                         # normal during shutdown
@@ -74,7 +74,7 @@ class BackgroundTasksManager:
 
                         # Try enrichment; on any failure, requeue the batch.
                         try:
-                            enriched: List[EnrichedModel] = await enrich_batch(batch)
+                            enriched: List[Model] = await enrich_batch(batch)
                             if enriched:
                                 await self._store.apply_enrichment(enriched)
                             else:

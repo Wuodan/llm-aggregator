@@ -4,6 +4,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict
 
+FILES_SIZE_DEFAULT_TIMEOUT_SECONDS = 15
+
 
 @dataclass(frozen=True)
 class BrainConfig:
@@ -46,12 +48,17 @@ class ProviderConfig:
 
     base_url: str  # public/external URL exposed via API responses
     internal_base_url: str | None = field(default=None)
-    api_key: str | None = field(default=None, repr=False, compare=False)
+    api_key: str | None = field(default=None, repr=False, compare=True)
+    files_size_gatherer: "FilesSizeGathererConfig | None" = field(default=None)
 
     def __post_init__(self):
         # If not explicitly set, default to base_url
         if self.internal_base_url is None:
             object.__setattr__(self, "internal_base_url", self.base_url)
+        if self.files_size_gatherer is not None and not isinstance(
+            self.files_size_gatherer, FilesSizeGathererConfig
+        ):
+            raise TypeError("files_size_gatherer must be a FilesSizeGathererConfig or None")
 
     @classmethod
     def from_api_dict(cls, raw: Dict[str, Any]) -> ProviderConfig | None:
@@ -73,35 +80,17 @@ class ProviderConfig:
 
 @dataclass(frozen=True)
 class ModelKey:
-    """Stable identifier for a model in this system.
-
-    We currently key by (base_url, model-id), which is sufficient as long as
-    each base_url exposes a unique model ID namespace.
-    """
+    """Stable identifier for a model in this system."""
 
     provider: ProviderConfig
     id: str
 
     def to_api_dict(self) -> Dict[str, Any]:
-        """Return canonical metadata we attach to aggregator responses."""
         return {
             "id": self.id,
             "base_url": self.provider.base_url,
             "internal_base_url": self.provider.internal_base_url,
         }
-
-    @classmethod
-    def from_api_dict(cls, raw: Dict[str, Any]) -> ModelKey | None:
-        provider_config = ProviderConfig.from_api_dict(raw)
-        model_id = raw.get("id")
-
-        if not isinstance(provider_config, ProviderConfig) or not isinstance(model_id, str):
-            return None
-
-        return cls(
-            provider=provider_config,
-            id=model_id,
-        )
 
 
 @dataclass(frozen=True)
@@ -146,42 +135,84 @@ class UIConfig:
         return Path(string_value)
 
 
-@dataclass
-class ModelInfo:
-    """Represents a model discovered from a provider.
+class ModelMeta(dict):
+    """Metadata for a model, allowing arbitrary provider/enriched fields."""
 
-    Attributes:
-        key:   Unique ModelKey (provider config + model id).
-        raw:   Original /v1/models entry merged with provider information.
-    """
-
-    key: ModelKey
-    raw: Dict[str, Any] = field(default_factory=dict)
-
-    def to_api_dict(self) -> Dict[str, Any]:
-        base = self.key.to_api_dict()
-        return {**self.raw, **base}
+    @property
+    def base_url(self) -> str:
+        return str(self.get("base_url") or "")
 
 
-@dataclass
-class EnrichedModel:
-    """Enriched metadata for a model.
+class Model(dict):
+    """Model object mirroring provider /v1/models payload plus provider config."""
 
-    This is produced by the brain LLM based on one or more ModelInfo entries.
-    """
+    def __init__(self, provider: ProviderConfig, payload: Dict[str, Any]) -> None:
+        model_id = payload.get("id")
+        if model_id is None:
+            raise ValueError("Model payload must include id")
 
-    key: ModelKey
-    enriched: Dict[str, Any] | None = None
+        super().__init__(payload)
+        self.provider = provider
+        self["id"] = str(model_id)
 
-    def to_api_dict(self) -> Dict[str, Any]:
-        base = self.key.to_api_dict()
-        enriched = self.enriched or {}
+        raw_meta = payload.get("meta")
+        meta: ModelMeta = ModelMeta(raw_meta) if isinstance(raw_meta, dict) else ModelMeta()
+        meta["base_url"] = provider.base_url
+        self["meta"] = meta
 
-        # First take enriched, then override with base on conflicts
-        data = {**enriched, **base}
+    @property
+    def id(self) -> str:
+        return str(self["id"])
 
-        # Drop a few internal keys
-        filtered_keys = {"internal_base_url"}
-        data = {k: v for k, v in data.items() if k not in filtered_keys}
+    @property
+    def meta(self) -> ModelMeta:
+        return self["meta"]
 
-        return data
+    @meta.setter
+    def meta(self, value: ModelMeta) -> None:
+        self["meta"] = value
+
+    def to_public_dict(self) -> Dict[str, Any]:
+        """Return a shallow copy suitable for API/brain payloads."""
+        return dict(self)
+
+
+def make_model(provider: ProviderConfig, payload: Dict[str, Any]) -> Model:
+    """Create a Model from a provider /v1/models payload."""
+    return Model(provider, payload)
+
+
+def model_key(model: Model) -> ModelKey:
+    return ModelKey(provider=model.provider, id=model.id)
+
+
+def public_model_dict(model: Model) -> Dict[str, Any]:
+    """Return a shallow copy without provider for API/brain payloads."""
+    return model.to_public_dict()
+
+
+@dataclass(frozen=True)
+class FilesSizeGathererConfig:
+    """Configuration for model file size gathering."""
+
+    path: str
+    base_path: str
+    timeout_seconds: int | None = None
+
+    def __post_init__(self) -> None:
+        path = (self.path or "").strip()
+        if not path:
+            raise ValueError("files_size_gatherer.path must be set")
+        object.__setattr__(self, "path", path)
+
+        base_path = (self.base_path or "").strip()
+        if not base_path:
+            raise ValueError("files_size_gatherer.base_path must be set")
+        object.__setattr__(self, "base_path", base_path)
+
+        timeout = self.timeout_seconds
+        if timeout is None:
+            object.__setattr__(self, "timeout_seconds", FILES_SIZE_DEFAULT_TIMEOUT_SECONDS)
+        else:
+            if timeout <= 0:
+                raise ValueError("files_size_gatherer.timeout_seconds must be positive when set")
