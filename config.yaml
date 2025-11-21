@@ -13,11 +13,11 @@ logger_overrides:
 
 brain:
   # URL of the provider where the enrichment model is hosted
-  base_url: "http://10.7.2.100:8080/v1"
+  base_url: "http://10.7.2.100:11434/v1"
   # Model used by the brain to enrich model metadata
-  id: "unsloth/GLM-4.6-GGUF:UD-IQ2_XXS"
+  id: "qwen3:8b"
   # If set, send Authorization: Bearer <API-KEY> for calls to this port
-  api_key: "unsloth/GLM-4.6-GGUF:UD-IQ2_XXS"
+  api_key: "qwen3:8b"
   # Maximum number of models to enrich in a single batch
   max_batch_size: 1
 
