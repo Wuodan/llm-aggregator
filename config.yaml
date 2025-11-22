@@ -24,20 +24,20 @@ brain:
 providers:
     # Public URL of the provider for users
   - base_url: http://10.7.2.100:8080/v1
-#  - base_url: http://10.7.2.100:8090/v1
-#    # Optional internal url for server-to-server calls
-#    internal_base_url: http://10.7.2.100:8080/v1
-#    # Optional bearer token for /v1/models calls to this provider
-#    api_key: null
-#  - base_url: http://10.7.2.100:11434/v1
-#    # Optional files size gatherer configuration
-#    files_size_gatherer:
-#      # Script is invoked as: <path> <base_path> <full_model_name>
-#      # Packaged helper script (relative to the repo / package)
-#      path: src/llm_aggregator/scripts/files-size-50GiB.sh
-#      base_path: "/var/lib/ollama/models"
-#      # Optional per-gatherer timeout in seconds (default: 15)
-#      timeout_seconds: 15
+  - base_url: http://10.7.2.100:8090/v1
+    # Optional internal url for server-to-server calls
+    internal_base_url: http://10.7.2.100:8090/v1
+    # Optional bearer token for /v1/models calls to this provider
+    api_key: null
+  - base_url: http://10.7.2.100:11434/v1
+    # Optional files size gatherer configuration
+    files_size_gatherer:
+      # Script is invoked as: <path> <base_path> <full_model_name>
+      # Packaged helper script (relative to the repo / package)
+      path: src/llm_aggregator/scripts/files-size-50GiB.sh
+      base_path: "/var/lib/ollama/models"
+      # Optional per-gatherer timeout in seconds (default: 15)
+      timeout_seconds: 15
 
 # Additional websites where markdown model info can be fetched.
 # Every template MUST contain {model_id} or the service will fail to start.
