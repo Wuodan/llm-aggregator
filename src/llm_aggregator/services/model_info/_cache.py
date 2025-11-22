@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Dict, Tuple
 
 
-@dataclass
+@dataclass(frozen=True)
 class CacheEntry:
     value: str | None
     stored_at: float

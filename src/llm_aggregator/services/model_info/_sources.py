@@ -10,6 +10,3 @@ from llm_aggregator.model_info_sources import (
 def get_website_sources() -> tuple[WebsiteSource, ...]:
     settings = get_settings()
     return build_sources_from_config(settings.model_info_sources)
-
-
-__all__ = ["WebsiteSource", "get_website_sources"]
