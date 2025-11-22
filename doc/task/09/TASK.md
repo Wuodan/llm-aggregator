@@ -28,8 +28,8 @@ Annotate each model with its total on-disk size (bytes) via a per-provider gathe
    - The `custom` gatherer executes the configured script; ensure execution is sandboxed/safe and has timeouts/logging.
 
 4. **Data surfaces**
-   - Store the size on the model metadata (e.g., `ModelInfo.files_size_bytes` or inside its `raw` data) so it can be sent to the “brain” LLM if needed.
-   - Add `llm_aggregator.files_size` to each entry in `GET /v1/models`, expressed in bytes.
+   - Store the size on the model metadata (e.g., inside its `meta` data) so it can be sent to the “brain” LLM if needed.
+   - Add `meta.size` to each entry in `GET /v1/models`, expressed in bytes.
    - If gathering is disabled or fails, omit or null the field without failing the endpoint.
 
 5. **Validation and docs**
