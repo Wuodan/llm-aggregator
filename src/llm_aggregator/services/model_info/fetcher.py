@@ -6,12 +6,15 @@ from dataclasses import dataclass
 
 from extract2md import fetch_to_markdown
 
+from llm_aggregator.config import get_settings
 from llm_aggregator.models import Model
 from ._cache import WebsiteInfoCache
 from ._sources import WebsiteSource, get_website_sources
 
-ONE_WEEK_SECONDS = 7 * 24 * 60 * 60
-_CACHE = WebsiteInfoCache(ttl_seconds=ONE_WEEK_SECONDS)
+
+_CACHE = WebsiteInfoCache(
+    ttl_seconds=get_settings().time.website_markdown_cache_ttl
+)
 
 
 @dataclass(frozen=True)

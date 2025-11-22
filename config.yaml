@@ -56,6 +56,8 @@ time:
   enrich_models_timeout: 300
   # for enrichment loop when queue is empty
   enrich_idle_sleep: 5
+  # TTL for cached website markdown scraped from external sources
+  website_markdown_cache_ttl: 604800
 
 ui:
   # Controls whether FastAPI serves static assets (either the bundled UI or a custom bundle).

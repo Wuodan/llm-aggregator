@@ -4,9 +4,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict
 
-FILES_SIZE_DEFAULT_TIMEOUT_SECONDS = 15
-
-
 @dataclass(frozen=True)
 class BrainConfig:
     """Configuration for the enrichment (brain) LLM endpoint."""
@@ -40,6 +37,7 @@ class TimeConfig:
     fetch_models_timeout: int = 10
     enrich_models_timeout: int = 60
     enrich_idle_sleep: int = 5
+    website_markdown_cache_ttl: int = 7 * 24 * 60 * 60
 
 
 @dataclass(frozen=True)
@@ -212,7 +210,6 @@ class FilesSizeGathererConfig:
 
         timeout = self.timeout_seconds
         if timeout is None:
-            object.__setattr__(self, "timeout_seconds", FILES_SIZE_DEFAULT_TIMEOUT_SECONDS)
-        else:
-            if timeout <= 0:
-                raise ValueError("files_size_gatherer.timeout_seconds must be positive when set")
+            object.__setattr__(self, "timeout_seconds", 15)
+        elif timeout <= 0:
+            raise ValueError("files_size_gatherer.timeout_seconds must be positive when set")

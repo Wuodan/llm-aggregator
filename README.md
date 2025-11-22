@@ -108,6 +108,10 @@ Use `static_enabled` and `custom_static_path` to set one of three modes:
   - `base_url` – Public URL returned via the REST API.
   - `internal_base_url` – Optional internal URL used for server-to-server calls; defaults to `base_url` when omitted.
   - `api_key` – Optional API-Key for that provider.
+  - `files_size_gatherer` – Optional block to report on-disk model size:
+    - `path` – Script or executable invoked as `<path> <base_path> <full_model_name>`.
+    - `base_path` – Filesystem root passed to the script.
+    - `timeout_seconds` – Optional per-provider timeout (default: 15s).
 - **model_info_sources** – Optional external websites where model information is fetched from for enrichment.
   Each entry requires a human-readable `name` (shown to the LLM) and a `url_template` that contains `{model_id}`.
 - **time** – Background scheduling knobs (all in seconds):
@@ -115,6 +119,7 @@ Use `static_enabled` and `custom_static_path` to set one of three modes:
   - `fetch_models_timeout`
   - `enrich_models_timeout`
   - `enrich_idle_sleep`
+  - `website_markdown_cache_ttl` – TTL for cached markdown scraped from external sources.
 - **ui** – Optional static UI:
   - `static_enabled` – `true`: static web frontend is served at `/index.html` and assets at `/static`.
   - `custom_static_path` – Optional directory to replace the bundled UI; must contain a readable `index.html` and
