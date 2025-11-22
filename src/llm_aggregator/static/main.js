@@ -40,6 +40,15 @@
     });
   }
 
+  function toGiB(bytes) {
+    if (bytes === null || bytes === undefined) return "";
+    if (typeof bytes !== "number" || Number.isNaN(bytes) || bytes < 0) return "";
+
+    const GiB = 1024 ** 3;
+    return (bytes / GiB).toFixed(1) + " GiB";
+  }
+
+
   async function loadModels() {
     try {
       const res = await fetch(`${apiBase}/v1/models`);
@@ -61,9 +70,10 @@
               : meta.types || ''
           }</td>`,
           `<td>${meta.model_family || ''}</td>`,
-          `<td>${meta.context_size || ''}</td>`,
+          `<td class="num">${meta.context_size || ''}</td>`,
           `<td>${meta.quant || ''}</td>`,
-          `<td>${meta.param || ''}</td>`,
+          `<td class="num">${meta.param || ''}</td>`,
+          `<td class="num">${toGiB(meta.size)}</td>`,
           `<td>${meta.summary || ''}</td>`
         ].join('');
         tbody.appendChild(tr);
