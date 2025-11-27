@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Awaitable, Callable
 
+import psutil
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -35,6 +36,9 @@ async def lifespan(_: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 
+_RAM_TOTAL_BYTES = psutil.virtual_memory().total
+
+
 @app.get("/v1/models")
 async def list_models():
     """Return the OpenAI ListModelsResponse with aggregator metadata.
@@ -50,6 +54,11 @@ async def list_models():
 @app.get("/api/stats")
 def get_stats():
     return JSONResponse(list(stats_history))
+
+
+@app.get("/api/ram")
+def get_ram_total():
+    return JSONResponse({"total_bytes": _RAM_TOTAL_BYTES})
 
 
 @app.post("/api/clear")

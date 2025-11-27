@@ -7,6 +7,7 @@
   const updatedEl = document.getElementById('updated');
   const clearBtn = document.getElementById('clearBtn');
   const statsCanvas = document.getElementById('statsData');
+  const ramLabel = document.getElementById('ramLabel');
 
   let statsChart = null;
 
@@ -189,10 +190,27 @@
     }
   }
 
+  async function loadRamTotal() {
+    if (!ramLabel) return;
+    try {
+      const res = await fetch(`${apiBase}/api/ram`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const totalBytes = typeof data.total_bytes === "number" ? data.total_bytes : null;
+      const totalGiB = toGiB(totalBytes);
+      if (totalGiB) {
+        ramLabel.textContent = `% RAM (total: ${totalGiB})`;
+      }
+    } catch (err) {
+      console.warn('RAM total fetch failed', err);
+    }
+  }
+
   function init() {
     initChart();
     loadModels();
     refreshStats();
+    loadRamTotal();
     setInterval(loadModels, 20000);
     setInterval(refreshStats, 10000);
 

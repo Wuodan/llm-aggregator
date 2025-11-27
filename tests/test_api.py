@@ -75,6 +75,13 @@ def test_api_stats_reads_history(monkeypatch):
     assert json.loads(response.body.decode()) == [1, 2, 3]
 
 
+def test_api_ram_returns_total(monkeypatch):
+    monkeypatch.setattr(api_module, "_RAM_TOTAL_BYTES", 123)
+
+    response = api_module.get_ram_total()
+    assert json.loads(response.body.decode()) == {"total_bytes": 123}
+
+
 def test_clear_data_calls_tasks_manager(monkeypatch):
     tasks = DummyTasksManager()
     monkeypatch.setattr(api_module, "tasks_manager", tasks)
