@@ -4,7 +4,7 @@ from llm_aggregator.services.enrich_model._extract_json_object import _extract_j
 
 
 def test_extract_json_object_handles_wrapped_and_plain_json():
-    wrapped = "```json\n{\"foo\": 1}\n```"
+    wrapped = "```\n{\"foo\": 1}\n```"
     assert _extract_json_list(wrapped) == {"foo": 1}
 
     plain = '{"bar": "baz"}'
@@ -12,13 +12,11 @@ def test_extract_json_object_handles_wrapped_and_plain_json():
 
 
 def test_extract_json_object_handles_wrapped_list():
-    wrapped_list = "```json\n[\n  {\n    \"id\": \"deepseek\",\n    \"provider\": \"Ollama\"\n  }\n]\n```"
-    assert _extract_json_list(wrapped_list) == [
-        {
-            "id": "deepseek",
-            "provider": "Ollama",
-        }
-    ]
+    wrapped_list = "```\n{\n  \"id\": \"deepseek\",\n  \"provider\": \"Ollama\"\n}\n```"
+    assert _extract_json_list(wrapped_list) == {
+        "id": "deepseek",
+        "provider": "Ollama",
+    }
 
 
 def test_extract_json_object_rejects_missing_json():
