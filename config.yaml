@@ -103,7 +103,8 @@ brain_prompts:
       ["llm", "vlm", "embedder", "reranker", "tts", "asr", "diarize", "cv", "image_gen"].
     - "model_family" is a short string like "Gemma", "Qwen", "Llama", "Mistral", etc.
     - "context_size" is an integer (best guess if unknown).
-    - "quant" is the quantization string, if you can infer it.
+    - "quant" is the quantization string, if you can infer it., Common values are:
+      ["Q2", "Q3", "Q4", "Q5", "Q6", "Q8", "FP16", "FP32"].
     - "param" is the parameter size like "7B", "14B", "70B".
 
     General rules:
