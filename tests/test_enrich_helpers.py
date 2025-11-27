@@ -11,6 +11,16 @@ def test_extract_json_object_handles_wrapped_and_plain_json():
     assert _extract_json_list(plain) == {"bar": "baz"}
 
 
+def test_extract_json_object_handles_wrapped_list():
+    wrapped_list = "```json\n[\n  {\n    \"id\": \"deepseek\",\n    \"provider\": \"Ollama\"\n  }\n]\n```"
+    assert _extract_json_list(wrapped_list) == [
+        {
+            "id": "deepseek",
+            "provider": "Ollama",
+        }
+    ]
+
+
 def test_extract_json_object_rejects_missing_json():
     assert _extract_json_list("no json here") is None
     assert _extract_json_list("") is None

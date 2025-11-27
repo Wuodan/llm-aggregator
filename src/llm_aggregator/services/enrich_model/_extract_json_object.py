@@ -3,14 +3,22 @@ from __future__ import annotations
 import json
 
 
-def _extract_json_list(text: str)-> list | None:
+def _strip_markdown_fence(text: str) -> str:
+    """Remove simple markdown fences like ```json ... ``` if present."""
+    if len(text) >= 6 and text.startswith("```") and text.rstrip().endswith("```"):
+        return text[3:-3].strip()
+
+    return text.strip()
+
+
+def _extract_json_list(text: str) -> list | None:
     """Best-effort extraction of a JSON object from a string.
 
     The brain *should* return a single JSON object, but in practice might wrap
     it in markdown fences or extra text. This attempts to find the first '{'
     and the last '}' and parse what's in between.
     """
-    text = text.strip()
+    text = _strip_markdown_fence(text) if text is not None else ""
     if not text:
         return None
 
