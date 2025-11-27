@@ -40,8 +40,8 @@ def test_gather_models_combines_and_sorts(monkeypatch):
         models = await model_sources_module.gather_models()
         assert [m.meta["base_url"] for m in models] == [
             "https://provider-a.example/v1",
-            "https://provider-a.example/v1",
             "https://provider-b.example/v1",
+            "https://provider-a.example/v1",
             "https://provider-b.example/v1",
         ]
         assert models[0].id == "model-1"

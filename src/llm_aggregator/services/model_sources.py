@@ -121,7 +121,7 @@ async def gather_models() -> List[Model]:
             continue
         all_models.extend(res)
 
-    # sort by provider name, then by model id
-    all_models.sort(key=lambda m: (m.key.provider_name, m.key.id.lower()))
+    # sort by model id, then by provider name
+    all_models.sort(key=lambda m: (m.key.id.lower(), m.key.provider_name.lower()))
     logging.info("Gathered %d models total", len(all_models))
     return all_models
