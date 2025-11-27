@@ -22,14 +22,20 @@ brain:
   max_batch_size: 1
 
 providers:
+  llama.cpp:
     # Public URL of the provider for users
-  - base_url: http://10.7.2.100:8080/v1
-  - base_url: http://10.7.2.100:8090/v1
+    base_url: http://10.7.2.100:8080/v1
+    files_size_gatherer:
+      path: src/llm_aggregator/scripts/files-size-llama-cpp.sh
+      base_path: "/Volumes/OWCUltra/ollama/models/"
+  nexa.ai:
+    base_url: http://10.7.2.100:8090/v1
     # Optional internal url for server-to-server calls
     internal_base_url: http://10.7.2.100:8090/v1
     # Optional bearer token for /v1/models calls to this provider
     api_key: null
-  - base_url: http://10.7.2.100:11434/v1
+  Ollama:
+    base_url: http://10.7.2.100:11434/v1
     # Optional files size gatherer configuration
     files_size_gatherer:
       # Script is invoked as: <path> <base_path> <full_model_name>
@@ -80,7 +86,7 @@ brain_prompts:
     [
       {
         "id": "<exact id from input>",
-        "base_url": "<exact base_url from input>",
+        "provider": "<exact provider from input>",
         "summary": "<very short description of this specific model>",
         "types": ["llm"],
         "model_family": "<e.g. Gemma, Qwen, Llama, Mistral>",
@@ -92,6 +98,7 @@ brain_prompts:
     ]
 
     Field rules:
+    - "provider" is the provider name from the input.
     - "types" is an array of tokens, each one of:
       ["llm", "vlm", "embedder", "reranker", "tts", "asr", "diarize", "cv", "image_gen"].
     - "model_family" is a short string like "Gemma", "Qwen", "Llama", "Mistral", etc.
@@ -101,7 +108,7 @@ brain_prompts:
 
     General rules:
     - Include EVERY input model exactly once.
-    - Preserve the exact id, base_url and internal_base_url from the input.
+    - Preserve the exact id and provider from the input.
     - Use ONLY the allowed type tokens.
     - Keep summaries concise.
     - Never add extra top-level keys.

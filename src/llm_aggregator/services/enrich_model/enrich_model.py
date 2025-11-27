@@ -5,7 +5,7 @@ import logging
 from typing import List
 
 from llm_aggregator.config import get_settings
-from llm_aggregator.models import Model, public_model_dict
+from llm_aggregator.models import Model, brain_model_dict
 from llm_aggregator.services.brain_client.brain_client import chat_completions
 from llm_aggregator.services.files_size import FILES_SIZE_FIELD, gather_files_size
 from llm_aggregator.services.model_info import fetch_model_markdown
@@ -29,8 +29,8 @@ async def enrich_batch(models: List[Model]) -> List[Model]:
                 meta.setdefault(FILES_SIZE_FIELD, files_size_bytes)
                 model.meta = meta
 
-        api_models = [public_model_dict(model)]
-        models_json = json.dumps(api_models, ensure_ascii=False)
+        brain_models = [brain_model_dict(model)]
+        models_json = json.dumps(brain_models, ensure_ascii=False)
         info_messages = await _build_info_messages(
             model,
             prompts_config.model_info_prefix_template,
@@ -126,17 +126,21 @@ def _merge_enrichment(model: Model, enriched_list: list) -> None:
         if not isinstance(item, dict):
             continue
 
-        enriched_id = item.get("id")
-        if model.id != enriched_id:
+        if not _matches_model(item, model):
             continue
 
-        enriched_base = item.get("base_url")
-        if meta.base_url != enriched_base:
-            continue
-
-        # Merge into meta without overwriting existing keys
         for key, value in item.items():
-            if key == "id":
+            if key in {"id", "provider", "base_url", "internal_base_url"}:
                 continue
             meta.setdefault(key, value)
         break
+
+
+def _matches_model(item: dict, model: Model) -> bool:
+    if model.key.id != item.get("id"):
+        return False
+
+    provider_from_item = item.get("provider")
+    if provider_from_item is None:
+        return False
+    return provider_from_item == model.key.provider_name

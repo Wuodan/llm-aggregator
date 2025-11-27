@@ -75,8 +75,8 @@ class ModelStore:
             models = list(self._models.values())
             models.sort(
                 key=lambda m: (
-                    m.meta.base_url,
-                    m.id.lower(),
+                    m.key.provider_name,
+                    m.key.id.lower(),
                 )
             )
             entries = [public_model_dict(model) for model in models]

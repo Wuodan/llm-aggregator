@@ -26,7 +26,7 @@ class WebsiteMarkdown:
 
 async def fetch_model_markdown(model: Model) -> list[WebsiteMarkdown]:
     """Return markdown snippets from known websites for the given model."""
-    normalized_id = _normalize_model_id(model.id)
+    normalized_id = _normalize_model_id(model.key.id)
     sources = get_website_sources()
     tasks = [
         _get_markdown_for_source(source, normalized_id)

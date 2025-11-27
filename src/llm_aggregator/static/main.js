@@ -45,7 +45,7 @@
     if (typeof bytes !== "number" || Number.isNaN(bytes) || bytes < 0) return "";
 
     const GiB = 1024 ** 3;
-    return (bytes / GiB).toFixed(1) + " GiB";
+    return `${(bytes / GiB).toFixed(1)} GiB`;
   }
 
 

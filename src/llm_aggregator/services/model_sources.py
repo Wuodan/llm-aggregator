@@ -12,6 +12,7 @@ from ..models import Model, ProviderConfig, make_model
 
 async def _fetch_models_for_provider(
     session: aiohttp.ClientSession,
+    provider_name: str,
     provider: ProviderConfig,
 ) -> List[Model]:
     """Fetch model list from one provider endpoint, robustly.
@@ -86,41 +87,41 @@ async def _fetch_models_for_provider(
             # Store the provider payload so downstream responses can retain
             # every OpenAI field plus custom extensions verbatim.
             try:
-                result.append(make_model(provider, dict(m)))
+                result.append(make_model(provider_name, provider, dict(m)))
             except Exception as exc:
                 logging.error("Failed to build model from provider %s payload: %r", url, exc)
 
-    logging.info("Fetched %d models from url %s", len(result), url)
+    logging.info("Fetched %d models from provider %s (%s)", len(result), provider_name, url)
     return result
 
 
 async def gather_models() -> List[Model]:
     """Aggregate model lists from all configured providers.
 
-    Uses settings.providers to know which base URLs to query.
+    Uses settings.provider_items to know which base URLs to query.
     """
     settings = get_settings()
-    providers = settings.providers
+    providers = list(settings.provider_items)
 
     async with aiohttp.ClientSession() as session:
         results = await asyncio.gather(
-            *(_fetch_models_for_provider(session, p) for p in providers),
+            *(_fetch_models_for_provider(session, name, provider) for name, provider in providers),
             return_exceptions=True,
         )
 
     all_models: List[Model] = []
     for idx, res in enumerate(results):
         if isinstance(res, Exception):
-            p = providers[idx]
+            name, p = providers[idx]
             logging.error(
                 "Unhandled error while fetching models from %s: %s",
-                p.internal_base_url,
+                name,
                 res,
             )
             continue
         all_models.extend(res)
 
-    # sort by provider base_url, then by model id
-    all_models.sort(key=lambda m: (m.meta.base_url, m.id.lower()))
+    # sort by provider name, then by model id
+    all_models.sort(key=lambda m: (m.key.provider_name, m.key.id.lower()))
     logging.info("Gathered %d models total", len(all_models))
     return all_models

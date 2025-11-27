@@ -13,6 +13,7 @@ SOURCE_LABEL = get_website_sources()[0].provider_label
 
 
 def _model(port: int, model_id: str, meta: dict | None = None) -> Model:
+    provider_name = f"provider-{port}"
     provider = ProviderConfig(
         base_url=f"https://models.example:{port}/v1",
         internal_base_url=f"http://localhost:{port}/v1",
@@ -20,13 +21,13 @@ def _model(port: int, model_id: str, meta: dict | None = None) -> Model:
     payload = {"id": model_id}
     if meta:
         payload["meta"] = meta
-    return make_model(provider, payload)
+    return make_model(provider_name, provider, payload)
 
 
 def test_enrich_batch_maps_brain_response(monkeypatch):
     async def _run():
         async def fake_chat(payload):
-            return '[{"id":"alpha","base_url":"https://models.example:8080/v1","summary":"desc","types":["llm"]}]'
+            return '[{"id":"alpha","provider":"provider-8080","summary":"desc","types":["llm"]}]'
 
         async def fake_fetch(_model):
             return []
@@ -42,7 +43,7 @@ def test_enrich_batch_maps_brain_response(monkeypatch):
         result = await enrich_module.enrich_batch(models)
         assert len(result) == 1
         assert result[0].meta["summary"] == "desc"
-        assert result[0].meta.base_url == "https://models.example:8080/v1"
+        assert result[0].meta["base_url"] == "https://models.example:8080/v1"
 
     import asyncio
 
@@ -61,7 +62,7 @@ def test_enrich_batch_includes_model_info_messages(monkeypatch):
 
         async def fake_chat(payload):
             payloads.append(payload)
-            return '[{"id":"alpha","base_url":"https://models.example:8080/v1","summary":"desc","types":["llm"]}]'
+            return '[{"id":"alpha","provider":"provider-8080","summary":"desc","types":["llm"]}]'
 
         async def fake_fetch(_model):
             snippet = SimpleNamespace(
@@ -98,16 +99,13 @@ def test_enrich_batch_calls_brain_per_model(monkeypatch):
             call_count["value"] += 1
             data = json.loads(payload["messages"][-1]["content"])
             model_id = data[0]["id"]
-            base_url = data[0]["meta"]["base_url"]
-            return json.dumps({
-                "ignored": "field",
-                "enriched": [{
-                    "id": model_id,
-                    "base_url": base_url,
-                    "summary": f"{model_id}-summary",
-                    "types": ["llm"],
-                }]
-            })
+            provider_name = data[0]["provider"]
+            return json.dumps([{
+                "id": model_id,
+                "provider": provider_name,
+                "summary": f"{model_id}-summary",
+                "types": ["llm"],
+            }])
 
         async def fake_fetch(_model):
             return []
@@ -124,6 +122,7 @@ def test_enrich_batch_calls_brain_per_model(monkeypatch):
 
         assert {r.id for r in result} == {"alpha", "beta"}
         assert call_count["value"] == 2
+        assert all("summary" in r.meta for r in result)
 
     import asyncio
     asyncio.run(_run())
@@ -132,7 +131,7 @@ def test_enrich_batch_calls_brain_per_model(monkeypatch):
 def test_enrich_batch_stores_files_size_in_meta(monkeypatch):
     async def _run():
         async def fake_chat(payload):
-            return '[{"id": "alpha","base_url":"https://models.example:8080/v1","summary": "desc","types": ["llm"]}]'
+            return '[{"id": "alpha","provider":"provider-8080","summary": "desc","types": ["llm"]}]'
 
         async def fake_fetch(_model):
             return []
@@ -157,7 +156,7 @@ def test_enrich_batch_stores_files_size_in_meta(monkeypatch):
 def test_enrich_batch_skips_size_gather_when_meta_present(monkeypatch):
     async def _run():
         async def fake_chat(payload):
-            return '[{"id": "alpha","base_url":"https://models.example:8080/v1","summary": "desc","types": ["llm"]}]'
+            return '[{"id": "alpha","provider":"provider-8080","summary": "desc","types": ["llm"]}]'
 
         async def fake_fetch(_model):
             return []

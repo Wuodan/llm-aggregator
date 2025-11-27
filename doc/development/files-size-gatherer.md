@@ -12,13 +12,15 @@ Example:
 
 ```yaml
 providers:
-  - base_url: https://ollama.example/v1
+  provider-ollama:
+    base_url: https://ollama.example/v1
     files_size_gatherer:
       base_path: /var/lib/ollama/models
       # Packaged script (resolved automatically when relative):
       path: files-size-ollama.sh
       timeout_seconds: 15
-  - base_url: https://custom.example/v1
+  provider-custom:
+    base_url: https://custom.example/v1
     files_size_gatherer:
       base_path: /mnt/models
       path: /path/to/my/custom-script.sh

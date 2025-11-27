@@ -66,6 +66,7 @@ def test_main_module_executes_when_run_directly(monkeypatch):
 
     monkeypatch.setitem(sys.modules, "uvicorn", fake_uvicorn)
     monkeypatch.setattr("llm_aggregator.config.get_settings", lambda: DummySettings())
+    monkeypatch.delitem(sys.modules, "llm_aggregator.main")
 
     runpy.run_module("llm_aggregator.main", run_name="__main__")
     assert called["app"] == "llm_aggregator.api:app"

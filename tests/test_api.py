@@ -151,6 +151,16 @@ def test_configure_ui_routes_serves_builtin_bundle(tmp_path, monkeypatch):
         "_default_builtin_static_path",
         lambda: Path(tmp_path),
     )
+    class DummyTasks:
+        @staticmethod
+        async def start():
+            return None
+
+        @staticmethod
+        async def stop():
+            return None
+
+    monkeypatch.setattr(api_module, "tasks_manager", DummyTasks())
     ui_config = UIConfig(static_enabled=True)
     app = FastAPI()
     api_module._configure_ui_routes(app, DummySettings(ui_config, version="bundle-version"))
@@ -176,6 +186,16 @@ def test_configure_ui_routes_serves_custom_bundle_without_cache_bust(tmp_path, m
         "_default_builtin_static_path",
         lambda: builtin_path,
     )
+    class DummyTasks:
+        @staticmethod
+        async def start():
+            return None
+
+        @staticmethod
+        async def stop():
+            return None
+
+    monkeypatch.setattr(api_module, "tasks_manager", DummyTasks())
 
     ui_config = UIConfig(
         static_enabled=True,
@@ -203,6 +223,16 @@ def test_configure_ui_routes_skips_mount_when_disabled(tmp_path, monkeypatch):
         "_default_builtin_static_path",
         lambda: builtin_path,
     )
+    class DummyTasks:
+        @staticmethod
+        async def start():
+            return None
+
+        @staticmethod
+        async def stop():
+            return None
+
+    monkeypatch.setattr(api_module, "tasks_manager", DummyTasks())
 
     ui_config = UIConfig(static_enabled=False)
     app = FastAPI()

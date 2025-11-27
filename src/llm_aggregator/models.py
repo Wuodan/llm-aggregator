@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict
 
+
 @dataclass(frozen=True)
 class BrainConfig:
     """Configuration for the enrichment (brain) LLM endpoint."""
@@ -77,21 +78,6 @@ class ProviderConfig:
 
 
 @dataclass(frozen=True)
-class ModelKey:
-    """Stable identifier for a model in this system."""
-
-    provider: ProviderConfig
-    id: str
-
-    def to_api_dict(self) -> Dict[str, Any]:
-        return {
-            "id": self.id,
-            "base_url": self.provider.base_url,
-            "internal_base_url": self.provider.internal_base_url,
-        }
-
-
-@dataclass(frozen=True)
 class ModelInfoSourceConfig:
     """Configuration for an external website that hosts model metadata."""
 
@@ -133,34 +119,52 @@ class UIConfig:
         return Path(string_value)
 
 
-class ModelMeta(dict):
-    """Metadata for a model, allowing arbitrary provider/enriched fields."""
+ModelMeta = Dict[str, Any]
 
-    @property
-    def base_url(self) -> str:
-        return str(self.get("base_url") or "")
+
+@dataclass(frozen=True)
+class ModelKey:
+    """Stable identifier for a model in this system."""
+
+    provider_name: str
+    id: str
+
+    def to_api_dict(self) -> Dict[str, Any]:
+        return {
+            "id": self.id,
+            "provider": self.provider_name,
+        }
 
 
 class Model(dict):
     """Model object mirroring provider /v1/models payload plus provider config."""
 
-    def __init__(self, provider: ProviderConfig, payload: Dict[str, Any]) -> None:
+    def __init__(self, provider_name: str, provider: ProviderConfig, payload: Dict[str, Any]) -> None:
         model_id = payload.get("id")
         if model_id is None:
             raise ValueError("Model payload must include id")
 
         super().__init__(payload)
-        self.provider = provider
-        self["id"] = str(model_id)
+        normalized_provider_name = str(provider_name or "").strip()
+        if not normalized_provider_name:
+            raise ValueError("provider_name must be set")
+
+        self.key = ModelKey(provider_name=normalized_provider_name, id=str(model_id))
+        self["id"] = self.key.id
+        self["provider"] = self.key.provider_name
 
         raw_meta = payload.get("meta")
-        meta: ModelMeta = ModelMeta(raw_meta) if isinstance(raw_meta, dict) else ModelMeta()
+        meta: ModelMeta = dict(raw_meta) if isinstance(raw_meta, dict) else {}
         meta["base_url"] = provider.base_url
         self["meta"] = meta
 
     @property
     def id(self) -> str:
-        return str(self["id"])
+        return self.key.id
+
+    @property
+    def provider_name(self) -> str:
+        return self.key.provider_name
 
     @property
     def meta(self) -> ModelMeta:
@@ -175,18 +179,28 @@ class Model(dict):
         return dict(self)
 
 
-def make_model(provider: ProviderConfig, payload: Dict[str, Any]) -> Model:
+def make_model(provider_name: str, provider: ProviderConfig, payload: Dict[str, Any]) -> Model:
     """Create a Model from a provider /v1/models payload."""
-    return Model(provider, payload)
+    return Model(provider_name, provider, payload)
 
 
 def model_key(model: Model) -> ModelKey:
-    return ModelKey(provider=model.provider, id=model.id)
+    return model.key
 
 
 def public_model_dict(model: Model) -> Dict[str, Any]:
     """Return a shallow copy without provider for API/brain payloads."""
     return model.to_public_dict()
+
+
+def brain_model_dict(model: Model) -> Dict[str, Any]:
+    """Return payload sent to the brain, identified by provider name instead of URLs."""
+    payload = public_model_dict(model)
+
+    meta = payload.get("meta")
+    meta_dict = meta if isinstance(meta, dict) else {}
+    payload["meta"] = {k: v for k, v in meta_dict.items() if k != "base_url"}
+    return payload
 
 
 @dataclass(frozen=True)

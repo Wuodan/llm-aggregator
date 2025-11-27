@@ -6,12 +6,15 @@ from llm_aggregator.models import Model, ProviderConfig, make_model
 from llm_aggregator.services import model_sources as model_sources_module
 
 
-def _provider(name: str) -> ProviderConfig:
-    return ProviderConfig(base_url=f"https://{name}.example/v1", internal_base_url=f"http://{name}:8000/v1")
+def _provider(name: str) -> tuple[str, ProviderConfig]:
+    return name, ProviderConfig(
+        base_url=f"https://{name}.example/v1",
+        internal_base_url=f"http://{name}:8000/v1",
+    )
 
 
-def _build_model(provider: ProviderConfig, idx: int) -> Model:
-    return make_model(provider, {"id": f"model-{idx}"})
+def _build_model(provider_name: str, provider: ProviderConfig, idx: int) -> Model:
+    return make_model(provider_name, provider, {"id": f"model-{idx}"})
 
 
 def test_gather_models_combines_and_sorts(monkeypatch):
@@ -23,19 +26,19 @@ def test_gather_models_combines_and_sorts(monkeypatch):
 
         class DummySettings:
             def __init__(self, provs):
-                self.providers = provs
+                self.provider_items = tuple(provs)
 
-        async def fake_fetch(session, provider):
+        async def fake_fetch(session, provider_name, provider):
             return [
-                _build_model(provider, 2),
-                _build_model(provider, 1),
+                _build_model(provider_name, provider, 2),
+                _build_model(provider_name, provider, 1),
             ]
 
         monkeypatch.setattr(model_sources_module, "get_settings", lambda: DummySettings(providers))
         monkeypatch.setattr(model_sources_module, "_fetch_models_for_provider", fake_fetch)
 
         models = await model_sources_module.gather_models()
-        assert [m.meta.base_url for m in models] == [
+        assert [m.meta["base_url"] for m in models] == [
             "https://provider-a.example/v1",
             "https://provider-a.example/v1",
             "https://provider-b.example/v1",
@@ -55,12 +58,12 @@ def test_gather_models_logs_and_skips_failed_provider(monkeypatch, caplog):
 
         class DummySettings:
             def __init__(self, provs):
-                self.providers = provs
+                self.provider_items = tuple(provs)
 
-        async def fake_fetch(session, provider):
+        async def fake_fetch(session, provider_name, provider):
             if provider.internal_base_url.endswith("provider-d:8000/v1"):
                 raise RuntimeError("boom")
-            return [_build_model(provider, 1)]
+            return [_build_model(provider_name, provider, 1)]
 
         monkeypatch.setattr(model_sources_module, "get_settings", lambda: DummySettings(providers))
         monkeypatch.setattr(model_sources_module, "_fetch_models_for_provider", fake_fetch)
@@ -68,7 +71,7 @@ def test_gather_models_logs_and_skips_failed_provider(monkeypatch, caplog):
         with caplog.at_level("ERROR"):
             models = await model_sources_module.gather_models()
 
-        assert [m.meta.base_url for m in models] == ["https://provider-c.example/v1"]
+        assert [m.meta["base_url"] for m in models] == ["https://provider-c.example/v1"]
         assert any("boom" in rec.message for rec in caplog.records)
 
     asyncio.run(_run())
@@ -115,13 +118,13 @@ def _settings_with_timeout(timeout: int = 5):
 
 def test_fetch_models_parses_dict_payload(monkeypatch):
     async def _run():
-        provider = _provider("host-a")
+        provider_name, provider = _provider("host-a")
         payload = {"data": [{"id": "alpha"}, {"id": "beta"}]}
         session = FakeSession(FakeResponse(payload=payload))
 
         monkeypatch.setattr(model_sources_module, "get_settings", lambda: _settings_with_timeout())
 
-        models = await model_sources_module._fetch_models_for_provider(session, provider)
+        models = await model_sources_module._fetch_models_for_provider(session, provider_name, provider)
         assert [m.id for m in models] == ["alpha", "beta"]
         assert session.requested["url"].endswith("/v1/models")
 
@@ -130,11 +133,11 @@ def test_fetch_models_parses_dict_payload(monkeypatch):
 
 def test_fetch_models_handles_http_error(monkeypatch):
     async def _run():
-        provider = _provider("host-b")
+        provider_name, provider = _provider("host-b")
         session = FakeSession(FakeResponse(status=500, payload={}, text="boom"))
 
         monkeypatch.setattr(model_sources_module, "get_settings", lambda: _settings_with_timeout())
-        models = await model_sources_module._fetch_models_for_provider(session, provider)
+        models = await model_sources_module._fetch_models_for_provider(session, provider_name, provider)
         assert models == []
 
     asyncio.run(_run())
@@ -142,11 +145,11 @@ def test_fetch_models_handles_http_error(monkeypatch):
 
 def test_fetch_models_handles_non_json_payload(monkeypatch):
     async def _run():
-        provider = _provider("host-c")
+        provider_name, provider = _provider("host-c")
         session = FakeSession(FakeResponse(payload=None, text="text body", json_exception=ValueError("bad json")))
 
         monkeypatch.setattr(model_sources_module, "get_settings", lambda: _settings_with_timeout())
-        models = await model_sources_module._fetch_models_for_provider(session, provider)
+        models = await model_sources_module._fetch_models_for_provider(session, provider_name, provider)
         assert models == []
 
     asyncio.run(_run())
@@ -154,14 +157,14 @@ def test_fetch_models_handles_non_json_payload(monkeypatch):
 
 def test_fetch_models_handles_transport_failure(monkeypatch):
     async def _run():
-        provider = _provider("host-d")
+        provider_name, provider = _provider("host-d")
 
         class RaisingSession:
             def get(self, url, timeout, headers=None):
                 raise RuntimeError("boom")
 
         monkeypatch.setattr(model_sources_module, "get_settings", lambda: _settings_with_timeout())
-        models = await model_sources_module._fetch_models_for_provider(RaisingSession(), provider)
+        models = await model_sources_module._fetch_models_for_provider(RaisingSession(), provider_name, provider)
         assert models == []
 
     asyncio.run(_run())
@@ -179,7 +182,7 @@ def test_fetch_models_uses_provider_api_key(monkeypatch):
 
         monkeypatch.setattr(model_sources_module, "get_settings", lambda: _settings_with_timeout())
 
-        await model_sources_module._fetch_models_for_provider(session, provider)
+        await model_sources_module._fetch_models_for_provider(session, "provider-e", provider)
         assert session.requested["headers"] == {"Authorization": "Bearer secret"}
 
     asyncio.run(_run())

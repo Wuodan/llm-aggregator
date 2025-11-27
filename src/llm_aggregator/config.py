@@ -39,7 +39,7 @@ class Settings(BaseSettings):
     brain: BrainConfig
     brain_prompts: BrainPromptsConfig
     time: TimeConfig
-    providers: List[ProviderConfig]
+    providers: Dict[str, ProviderConfig]
     model_info_sources: List[ModelInfoSourceConfig] | None = Field(default=None)
     logger_overrides: Dict[str, str | int] = Field(
         default_factory=_default_logger_overrides
@@ -59,6 +59,8 @@ class Settings(BaseSettings):
             object.__setattr__(self, "logger_overrides", {})
         if self.model_info_sources is None:
             object.__setattr__(self, "model_info_sources", [])
+        if self.providers is None:
+            object.__setattr__(self, "providers", {})
         # Validate model_info_sources immediately so startup fails fast on bad config.
         build_sources_from_config(self.model_info_sources)
         _validate_ui_config(self.ui)
@@ -74,6 +76,10 @@ class Settings(BaseSettings):
     @property
     def enrich_models_timeout(self) -> int:
         return self.time.enrich_models_timeout
+
+    @property
+    def provider_items(self) -> Tuple[Tuple[str, ProviderConfig], ...]:
+        return tuple(self.providers.items())
 
     @classmethod
     def settings_customise_sources(

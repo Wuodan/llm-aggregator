@@ -24,7 +24,7 @@ async def chat_completions(payload: dict[str, str | list[dict[str, str]] | float
 
     try:
         async with aiohttp.ClientSession() as session:
-            logging.info("Preparing POST to brain ...")
+            logging.info("Sending POST to brain ...")
             async with session.post(url, headers=headers, json=payload,
                                     timeout=settings.enrich_models_timeout) as r:
                 if r.status >= 400:
@@ -32,7 +32,6 @@ async def chat_completions(payload: dict[str, str | list[dict[str, str]] | float
                     return ""
 
                 try:
-                    logging.info("Sending POST to brain ...")
                     response = await r.json(content_type=None)
                 except ClientError:
                     text = await r.text()

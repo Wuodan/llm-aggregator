@@ -7,17 +7,16 @@ from llm_aggregator.models import Model, ProviderConfig, make_model, model_key
 from llm_aggregator.services.model_store import ModelStore
 
 
-def _provider(name: str) -> ProviderConfig:
-    return ProviderConfig(base_url=f"https://{name}.example/v1", internal_base_url=f"http://{name}:9000/v1")
-
-
 def _build_model(provider_name: str, model_id: str, extra: Dict[str, object] | None = None) -> Model:
     """Helper to build Model objects with stable ids and providers."""
-    provider = _provider(provider_name)
+    provider = ProviderConfig(
+        base_url=f"https://{provider_name}.example/v1",
+        internal_base_url=f"http://{provider_name}:9000/v1",
+    )
     data = {"id": model_id}
     if extra:
         data.update(extra)
-    return make_model(provider, data)
+    return make_model(provider_name, provider, data)
 
 
 def test_model_store_snapshot_and_enrichment_merging():
@@ -40,10 +39,7 @@ def test_model_store_snapshot_and_enrichment_merging():
         await store.apply_enrichment([gamma])
 
         snapshot = await store.get_snapshot()
-        assert [entry["meta"]["base_url"] for entry in snapshot] == [
-            "https://provider-a.example/v1",
-            "https://provider-b.example/v1",
-        ]
+        assert {entry["provider"] for entry in snapshot} == {"provider-a", "provider-b"}
         assert snapshot[1]["meta"]["summary"] == "gamma summary"
         assert snapshot[0]["meta"]["source"] == "updated"
         aggregator_meta = snapshot[0]["meta"]

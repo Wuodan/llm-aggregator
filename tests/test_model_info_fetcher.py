@@ -9,11 +9,12 @@ from llm_aggregator.services.model_info._sources import get_website_sources
 
 
 def _model(model_id: str) -> Model:
+    provider_name = "provider"
     provider = ProviderConfig(
         base_url="https://provider.example/v1",
         internal_base_url="http://provider.local/v1",
     )
-    return make_model(provider, {"id": model_id})
+    return make_model(provider_name, provider, {"id": model_id})
 
 
 def test_fetch_model_markdown_fetches_and_caches(monkeypatch):

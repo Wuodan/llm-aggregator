@@ -8,11 +8,12 @@ from llm_aggregator.services import tasks as tasks_module
 
 
 def _model(idx: int) -> Model:
+    provider_name = f"provider-{idx}"
     provider = ProviderConfig(
-        base_url=f"https://provider-{idx}.example/v1",
-        internal_base_url=f"http://provider-{idx}:8000/v1",
+        base_url=f"https://{provider_name}.example/v1",
+        internal_base_url=f"http://{provider_name}:8000/v1",
     )
-    return make_model(provider, {"id": f"model-{idx}"})
+    return make_model(provider_name, provider, {"id": f"model-{idx}"})
 
 
 class FakeStore:

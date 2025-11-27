@@ -5,6 +5,7 @@ import logging
 from pathlib import Path
 
 from llm_aggregator.models import Model
+from llm_aggregator.config import get_settings
 
 FILES_SIZE_FIELD = "size"
 DEFAULT_TIMEOUT_SECONDS = 15
@@ -12,19 +13,24 @@ DEFAULT_TIMEOUT_SECONDS = 15
 
 async def gather_files_size(model: Model) -> int | None:
     """Return total size in bytes for the given model, or None on failure/disable."""
-    cfg = model.provider.files_size_gatherer
+    settings = get_settings()
+    provider_cfg = settings.providers.get(model.provider_name)
+    if provider_cfg is None:
+        return None
+
+    cfg = provider_cfg.files_size_gatherer
     if not cfg:
         return None
 
     try:
-        logging.info("Gathering files size for %s models", model.id)
+        logging.info("Gathering files size for %s models", model.key.id)
 
         timeout = cfg.timeout_seconds or DEFAULT_TIMEOUT_SECONDS
         script_path = Path(cfg.path)
         if not script_path.exists():
             logging.error("Custom files_size_gatherer path not found: %s", script_path)
             return None
-        cmd = [str(script_path), cfg.base_path, model.id]
+        cmd = [str(script_path), cfg.base_path, model.key.id]
 
         try:
             proc = await asyncio.create_subprocess_exec(
@@ -75,6 +81,6 @@ async def gather_files_size(model: Model) -> int | None:
     except Exception as exc:
         logging.error(
             "files_size_gatherer failed for %s: %r",
-            model.id,
+            model.key.id,
             exc,
         )

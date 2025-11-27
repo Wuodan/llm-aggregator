@@ -25,10 +25,12 @@ def test_settings_load_from_custom_yaml(tmp_path, monkeypatch):
           enrich_models_timeout: 7
           enrich_idle_sleep: 1
         providers:
-          - base_url: https://public-p1.example/v1
+          provider-one:
+            base_url: https://public-p1.example/v1
             internal_base_url: http://p1:9000/v1
             api_key: provider-secret
-          - base_url: https://public-p2.example/v1
+          provider-two:
+            base_url: https://public-p2.example/v1
         model_info_sources:
           - name: "TestSource"
             url_template: "https://source/{model_id}"
@@ -65,13 +67,12 @@ def test_settings_load_from_custom_yaml(tmp_path, monkeypatch):
     assert settings.log_format is None
     assert settings.logger_overrides["extract2md"] == "warning"
     assert settings.logger_overrides["noisy.lib"] == "ERROR"
-    assert settings.providers[0].base_url == "https://public-p1.example/v1"
-    assert settings.providers[0].internal_base_url == "http://p1:9000/v1"
-    # Defaults to base_url when not provided
-    assert settings.providers[0].api_key == "provider-secret"
-    assert settings.providers[1].base_url == "https://public-p2.example/v1"
-    assert settings.providers[1].internal_base_url == "https://public-p2.example/v1"
-    assert settings.providers[1].api_key is None
+    assert settings.providers["provider-one"].base_url == "https://public-p1.example/v1"
+    assert settings.providers["provider-one"].internal_base_url == "http://p1:9000/v1"
+    assert settings.providers["provider-one"].api_key == "provider-secret"
+    assert settings.providers["provider-two"].base_url == "https://public-p2.example/v1"
+    assert settings.providers["provider-two"].internal_base_url == "https://public-p2.example/v1"
+    assert settings.providers["provider-two"].api_key is None
     assert settings.model_info_sources[0].name == "TestSource"
     assert settings.ui.static_enabled is True
     assert settings.ui.custom_static_path is None
@@ -104,7 +105,8 @@ def test_model_info_sources_optional(tmp_path, monkeypatch):
           enrich_models_timeout: 1
           enrich_idle_sleep: 1
         providers:
-          - base_url: "http://provider"
+          default:
+            base_url: "http://provider"
         ui:
           static_enabled: false
           custom_static_path: null
@@ -150,7 +152,8 @@ def test_invalid_builtin_static_path_raises(tmp_path, monkeypatch):
           enrich_models_timeout: 1
           enrich_idle_sleep: 1
         providers:
-          - base_url: "http://provider"
+          default:
+            base_url: "http://provider"
         model_info_sources:
           - name: "Source"
             url_template: "https://example.com/{{model_id}}"
@@ -195,7 +198,8 @@ def test_invalid_custom_static_path_raises(tmp_path, monkeypatch):
           enrich_models_timeout: 1
           enrich_idle_sleep: 1
         providers:
-          - base_url: "http://provider"
+          default:
+            base_url: "http://provider"
         model_info_sources:
           - name: "Source"
             url_template: "https://example.com/{{model_id}}"
@@ -241,7 +245,8 @@ def test_custom_static_path_parses_when_present(tmp_path, monkeypatch):
           enrich_models_timeout: 1
           enrich_idle_sleep: 1
         providers:
-          - base_url: "http://provider"
+          default:
+            base_url: "http://provider"
         model_info_sources:
           - name: "Source"
             url_template: "https://example.com/{{model_id}}"
@@ -293,7 +298,8 @@ def test_invalid_model_info_source_template_raises(tmp_path, monkeypatch):
           enrich_models_timeout: 1
           enrich_idle_sleep: 1
         providers:
-          - base_url: "http://provider"
+          default:
+            base_url: "http://provider"
         model_info_sources:
           - name: "Broken"
             url_template: "https://example.com/"
@@ -329,12 +335,14 @@ def test_files_size_gatherer_config_parses(tmp_path, monkeypatch):
           enrich_models_timeout: 1
           enrich_idle_sleep: 1
         providers:
-          - base_url: "http://provider-a"
+          provider-a:
+            base_url: "http://provider-a"
             files_size_gatherer:
               base_path: "{tmp_path}"
               path: "/usr/bin/size-a"
               timeout_seconds: 5
-          - base_url: "http://provider-b"
+          provider-b:
+            base_url: "http://provider-b"
             files_size_gatherer:
               base_path: "/models"
               path: "/usr/bin/size-b"
@@ -355,13 +363,13 @@ def test_files_size_gatherer_config_parses(tmp_path, monkeypatch):
 
     settings = config_module.get_settings()
     try:
-        g1 = settings.providers[0].files_size_gatherer
+        g1 = settings.providers["provider-a"].files_size_gatherer
         assert g1 is not None
         assert g1.base_path == str(tmp_path)
         assert g1.timeout_seconds == 5
         assert g1.path == "/usr/bin/size-a"
 
-        g2 = settings.providers[1].files_size_gatherer
+        g2 = settings.providers["provider-b"].files_size_gatherer
         assert g2 is not None
         assert g2.path == "/usr/bin/size-b"
     finally:
@@ -382,7 +390,8 @@ def test_custom_files_size_gatherer_requires_path(tmp_path, monkeypatch):
           enrich_models_timeout: 1
           enrich_idle_sleep: 1
         providers:
-          - base_url: "http://provider"
+          default:
+            base_url: "http://provider"
             files_size_gatherer:
               base_path: "/models"
         ui:
