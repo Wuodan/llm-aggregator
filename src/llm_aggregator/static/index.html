@@ -34,10 +34,22 @@
     }
     .num {
       text-align: right;
+      white-space: nowrap;
+    }
+    .nowrap {
+      white-space: nowrap;
     }
     table { border-collapse: collapse; width: 100%; margin-top: 0.5em; }
-    th, td { border-bottom: 1px solid #ddd; padding: 6px 8px; font-size: 0.9em; }
-    th { background: #f0f0f0; text-align: left; }
+    th, td {
+      border-bottom: 1px solid #ddd;
+      padding: 6px 8px;
+      font-size: 0.9em;
+    }
+    th {
+      background: #f0f0f0;
+      text-align: left;
+      white-space: nowrap;
+    }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -63,7 +75,9 @@
   <thead>
     <tr>
       <th>Model</th>
+      <th>Provider</th>
       <th>Base URL</th>
+      <th>~RAM</th>
       <th>Types</th>
       <th>Family</th>
       <th>Context</th>

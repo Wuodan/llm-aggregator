@@ -49,6 +49,74 @@
   }
 
 
+  const QUANT_BITS = {
+    Q2: 3.0,
+    Q3: 4.0,
+    Q4: 5.0,
+    Q5: 6.3,
+    Q6: 7.0,
+    Q8: 9.0,
+    F16: 16.0,
+    FP16: 16.0,
+    F32: 32.0,
+    FP32: 32.0,
+  };
+
+  const QUANT_TOKENS = Object.keys(QUANT_BITS).sort((a, b) => b.length - a.length);
+
+  function quantToBits(q) {
+    if (!q) return null;
+    const s = String(q).toUpperCase();
+    for (const tok of QUANT_TOKENS) {
+      if (s.includes(tok)) return QUANT_BITS[tok];
+    }
+    return null;
+  }
+
+  function bytesPerParam(q) {
+    const bits = quantToBits(q);
+    if (bits == null) return null;
+    return bits / 8.0;
+  }
+
+  function parseParams(param) {
+    if (param === null || param === undefined) return null;
+    if (typeof param === "number") {
+      return Number.isFinite(param) && param > 0 ? param : null;
+    }
+    const s = String(param).trim().toUpperCase();
+    if (!s) return null;
+
+    const matchB = s.match(/^([0-9]+(?:\.[0-9]+)?)\s*B$/);
+    if (matchB) {
+      const v = Number(matchB[1]);
+      return Number.isFinite(v) && v > 0 ? v * 1e9 : null;
+    }
+
+    const n = Number(s);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }
+  
+  function estimateRamGiB(meta) {
+    if (!meta) return "";
+    // --- primary: params × quant ---
+    const params = parseParams(meta.param);
+    const bpp = bytesPerParam(meta.quant);
+    if (params && bpp) {
+      const bytes = params * bpp;
+      if (Number.isFinite(bytes) && bytes > 0) {
+        return toGiB(bytes * 1.1);
+      }
+    }
+    // --- fallback: file size × overhead ---
+    if (meta.size && Number.isFinite(meta.size) && meta.size > 0) {
+      const est = meta.size * 1.2; // or 1.1, your choice
+      return toGiB(est);
+    }
+    // --- neither available ---
+    return "";
+  }
+
   async function loadModels() {
     try {
       const res = await fetch(`${apiBase}/v1/models`);
@@ -63,7 +131,9 @@
         const meta = model.meta || {};
         tr.innerHTML = [
           `<td>${id}</td>`,
-          `<td>${meta.base_url || ''}</td>`,
+          `<td>${model.provider || ''}</td>`,
+          `<td class="nowrap">${meta.base_url || ''}</td>`,
+          `<td class="num">${estimateRamGiB(meta)}</td>`,
           `<td>${
             Array.isArray(meta.types)
               ? meta.types.join(', ')
