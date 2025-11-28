@@ -100,7 +100,12 @@
   
   function estimateRamGiB(meta) {
     if (!meta) return "";
-    // --- primary: params × quant ---
+    // --- primary: file size × overhead ---
+    if (meta.size && Number.isFinite(meta.size) && meta.size > 0) {
+      const est = meta.size * 1.2; // or 1.1
+      return toGiB(est);
+    }
+    // --- fallback: params × quant ---
     const params = parseParams(meta.param);
     const bpp = bytesPerParam(meta.quant);
     if (params && bpp) {
@@ -108,11 +113,6 @@
       if (Number.isFinite(bytes) && bytes > 0) {
         return toGiB(bytes * 1.1);
       }
-    }
-    // --- fallback: file size × overhead ---
-    if (meta.size && Number.isFinite(meta.size) && meta.size > 0) {
-      const est = meta.size * 1.2; // or 1.1, your choice
-      return toGiB(est);
     }
     // --- neither available ---
     return "";
