@@ -12,8 +12,8 @@ MODEL_ID=$2
 # Drop quant suffix after colon if present
 BASE_ID=${MODEL_ID%%:*}
 
-PATTERN=${PATTERN//:/\?}
-PATTERN="${PATTERN}*"
+PATTERN=${BASE_ID//:/\?}
+PATTERN="*/${PATTERN}*"
 
 if [[ ! -d "$BASE_PATH" ]]; then
   exit 1
@@ -22,7 +22,7 @@ fi
 tmpfile=$(mktemp)
 trap 'rm -f "$tmpfile"' EXIT
 
-find "$BASE_PATH" -type f -name "$PATTERN" -print0 > "$tmpfile"
+find "$BASE_PATH" -type f -path "$PATTERN" -print0 > "$tmpfile"
 
 if [[ ! -s "$tmpfile" ]]; then
   exit 1
