@@ -19,6 +19,15 @@ def test_extract_json_object_handles_wrapped_list():
     }
 
 
+def test_extract_json_object_handles_inline_and_json_fences():
+    assert _extract_json_list("```{\"foo\": 1}```") == {"foo": 1}
+    assert _extract_json_list("```json[{\"id\": \"facebook/detr-resnet-50\"}]```") == {
+        "id": "facebook/detr-resnet-50"
+    }
+    wrapped_json = "```json\n[\n  {\"id\": \"facebook/detr-resnet-50\"}\n]\n```"
+    assert _extract_json_list(wrapped_json) == {"id": "facebook/detr-resnet-50"}
+
+
 def test_extract_json_object_rejects_missing_json():
     assert _extract_json_list("no json here") is None
     assert _extract_json_list("") is None

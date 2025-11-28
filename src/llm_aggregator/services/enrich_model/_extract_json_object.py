@@ -8,6 +8,9 @@ def _strip_markdown_fence(text: str) -> str:
     if len(text) >= 6 and text.startswith("```") and text.rstrip().endswith("```"):
         return text[3:-3].strip()
 
+    if len(text) >= 10 and text.startswith("```json") and text.rstrip().endswith("```"):
+        return text[7:-3].strip()
+
     return text.strip()
 
 
