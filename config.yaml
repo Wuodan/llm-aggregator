@@ -20,6 +20,8 @@ brain:
   api_key: "qwen3:8b"
   # Maximum number of models to enrich in a single batch
   max_batch_size: 1
+  # Sampling temperature to use when generating enrichment metadata
+  temperature: 0.2
 
 providers:
   llama.cpp:

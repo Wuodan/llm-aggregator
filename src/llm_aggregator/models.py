@@ -14,6 +14,7 @@ class BrainConfig:
     id: str
     api_key: str | None = None
     max_batch_size: int = 1
+    temperature: float = 0.2
 
 
 @dataclass(frozen=True)

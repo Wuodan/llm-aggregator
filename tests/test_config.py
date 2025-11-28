@@ -19,6 +19,7 @@ def test_settings_load_from_custom_yaml(tmp_path, monkeypatch):
           id: "brain-model"
           api_key: null
           max_batch_size: 2
+          temperature: 0.7
         time:
           fetch_models_interval: 5
           fetch_models_timeout: 3
@@ -60,6 +61,7 @@ def test_settings_load_from_custom_yaml(tmp_path, monkeypatch):
     assert settings.brain.base_url == "http://brain:8088/v1"
     assert settings.brain.id == "brain-model"
     assert settings.brain.api_key is None
+    assert settings.brain.temperature == 0.7
     assert settings.brain_prompts.system == "system"
     assert settings.brain_prompts.user == "user"
     assert settings.brain_prompts.model_info_prefix_template == "prefix"

@@ -104,6 +104,7 @@ Use `static_enabled` and `custom_static_path` to set one of three modes:
   - `id` – Model identifier passed to the provider.
   - `api_key` – Optional API-Key.
   - `max_batch_size` – Number of models to enrich at once (defaults to 1).
+  - `temperature` – Sampling temperature used for enrichment calls (default: `0.2`).
 - **providers** – Map of provider name to an OpenAI-compatible backend to query:
   - `base_url` – Public URL returned via the REST API.
   - `internal_base_url` – Optional internal URL used for server-to-server calls; defaults to `base_url` when omitted.

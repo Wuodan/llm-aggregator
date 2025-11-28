@@ -45,7 +45,7 @@ async def enrich_batch(models: List[Model]) -> List[Model]:
 
         payload = {
             "messages": messages,
-            "temperature": 0.2,
+            "temperature": settings.brain.temperature,
         }
 
         enriched_list = await _get_enriched_list(payload)

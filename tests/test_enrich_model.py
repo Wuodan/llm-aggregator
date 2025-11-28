@@ -86,6 +86,7 @@ def test_enrich_batch_includes_model_info_messages(monkeypatch):
         messages = payloads[0]["messages"]
         assert messages[2]["content"].startswith(f"Model-Info for alpha from {SOURCE_LABEL}")
         assert messages[-1]["content"].startswith("[")
+        assert payloads[0]["temperature"] == enrich_module.get_settings().brain.temperature
 
     import asyncio
     asyncio.run(_run())
