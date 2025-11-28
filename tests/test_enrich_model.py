@@ -40,10 +40,11 @@ def test_enrich_batch_maps_brain_response(monkeypatch):
         monkeypatch.setattr(enrich_module, "gather_files_size", fake_size)
         models = [_model(8080, "alpha")]
 
-        result = await enrich_module.enrich_batch(models)
-        assert len(result) == 1
-        assert result[0].meta["summary"] == "desc"
-        assert result[0].meta["base_url"] == "https://models.example:8080/v1"
+        enriched, failed = await enrich_module.enrich_batch(models)
+        assert len(enriched) == 1
+        assert failed == []
+        assert enriched[0].meta["summary"] == "desc"
+        assert enriched[0].meta["base_url"] == "https://models.example:8080/v1"
 
     import asyncio
 
@@ -53,7 +54,7 @@ def test_enrich_batch_maps_brain_response(monkeypatch):
 def test_enrich_batch_handles_empty_models():
     import asyncio
 
-    assert asyncio.run(enrich_module.enrich_batch([])) == []
+    assert asyncio.run(enrich_module.enrich_batch([])) == ([], [])
 
 
 def test_enrich_batch_includes_model_info_messages(monkeypatch):
@@ -80,8 +81,9 @@ def test_enrich_batch_includes_model_info_messages(monkeypatch):
         monkeypatch.setattr(enrich_module, "gather_files_size", fake_size)
 
         models = [_model(8080, "alpha")]
-        result = await enrich_module.enrich_batch(models)
-        assert len(result) == 1
+        enriched, failed = await enrich_module.enrich_batch(models)
+        assert len(enriched) == 1
+        assert failed == []
 
         messages = payloads[0]["messages"]
         assert messages[2]["content"].startswith(f"Model-Info for alpha from {SOURCE_LABEL}")
@@ -119,11 +121,12 @@ def test_enrich_batch_calls_brain_per_model(monkeypatch):
         monkeypatch.setattr(enrich_module, "gather_files_size", fake_size)
 
         models = [_model(8080, "alpha"), _model(9090, "beta")]
-        result = await enrich_module.enrich_batch(models)
+        enriched, failed = await enrich_module.enrich_batch(models)
 
-        assert {r.id for r in result} == {"alpha", "beta"}
+        assert {r.id for r in enriched} == {"alpha", "beta"}
         assert call_count["value"] == 2
-        assert all("summary" in r.meta for r in result)
+        assert all("summary" in r.meta for r in enriched)
+        assert failed == []
 
     import asyncio
     asyncio.run(_run())
@@ -145,10 +148,11 @@ def test_enrich_batch_stores_files_size_in_meta(monkeypatch):
         monkeypatch.setattr(enrich_module, "gather_files_size", fake_size)
 
         models = [_model(8080, "alpha")]
-        result = await enrich_module.enrich_batch(models)
+        enriched, failed = await enrich_module.enrich_batch(models)
 
-        assert len(result) == 1
-        assert result[0].meta["size"] == 123
+        assert len(enriched) == 1
+        assert failed == []
+        assert enriched[0].meta["size"] == 123
 
     import asyncio
     asyncio.run(_run())
@@ -171,10 +175,38 @@ def test_enrich_batch_skips_size_gather_when_meta_present(monkeypatch):
         monkeypatch.setattr(enrich_module, "fetch_model_markdown", fake_fetch)
         monkeypatch.setattr(enrich_module, "gather_files_size", fake_size)
 
-        result = await enrich_module.enrich_batch(models)
+        enriched, failed = await enrich_module.enrich_batch(models)
 
-        assert len(result) == 1
-        assert result[0].meta["size"] == 321
+        assert len(enriched) == 1
+        assert failed == []
+        assert enriched[0].meta["size"] == 321
+
+    import asyncio
+    asyncio.run(_run())
+
+
+def test_enrich_batch_marks_failed_when_model_missing(monkeypatch):
+    async def _run():
+        async def fake_chat(payload):
+            # provider mismatch -> should be treated as failure
+            return '[{"id":"alpha","provider":"wrong","summary":"desc"}]'
+
+        async def fake_fetch(_model):
+            return []
+
+        async def fake_size(_model):
+            return None
+
+        models = [_model(8080, "alpha")]
+
+        monkeypatch.setattr(enrich_module, "chat_completions", fake_chat)
+        monkeypatch.setattr(enrich_module, "fetch_model_markdown", fake_fetch)
+        monkeypatch.setattr(enrich_module, "gather_files_size", fake_size)
+
+        enriched, failed = await enrich_module.enrich_batch(models)
+
+        assert enriched == []
+        assert [m.id for m in failed] == ["alpha"]
 
     import asyncio
     asyncio.run(_run())

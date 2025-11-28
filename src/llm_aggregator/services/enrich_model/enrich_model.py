@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import List
+from typing import List, Tuple
 
 from llm_aggregator.config import get_settings
 from llm_aggregator.models import Model, brain_model_dict
@@ -12,14 +12,19 @@ from llm_aggregator.services.model_info import fetch_model_markdown
 from ._extract_json_object import _extract_json_list
 
 
-async def enrich_batch(models: List[Model]) -> List[Model]:
-    """Call the configured brain LLM to enrich metadata for a batch of models."""
+async def enrich_batch(models: List[Model]) -> Tuple[List[Model], List[Model]]:
+    """Call the configured brain LLM to enrich metadata for a batch of models.
+
+    Returns a tuple of (enriched_models, failed_models) so callers can requeue
+    individual failures.
+    """
     if not models:
-        return []
+        return [], []
 
     settings = get_settings()
     prompts_config = settings.brain_prompts
     enriched_models: List[Model] = []
+    failed_models: List[Model] = []
     for model in models:
         meta = model.meta
         has_files_size = FILES_SIZE_FIELD in meta
@@ -49,11 +54,18 @@ async def enrich_batch(models: List[Model]) -> List[Model]:
         }
 
         enriched_list = await _get_enriched_list(payload)
-        _merge_enrichment(model, enriched_list)
-        enriched_models.append(model)
+        merged = _merge_enrichment(model, enriched_list)
+        if merged:
+            enriched_models.append(model)
+        else:
+            failed_models.append(model)
 
-    logging.info("Brain enrichment produced %d entries", len(enriched_models))
-    return enriched_models
+    logging.info(
+        "Brain enrichment produced %d entries (failed=%d)",
+        len(enriched_models),
+        len(failed_models),
+    )
+    return enriched_models, failed_models
 
 
 async def _build_info_messages(
@@ -118,7 +130,7 @@ async def _get_enriched_list(payload: dict[str, str | list[dict[str, str]] | flo
         return []
 
 
-def _merge_enrichment(model: Model, enriched_list: list) -> None:
+def _merge_enrichment(model: Model, enriched_list: list) -> bool:
 
     meta = model.meta
 
@@ -133,7 +145,9 @@ def _merge_enrichment(model: Model, enriched_list: list) -> None:
             if key in {"id", "provider", "base_url", "internal_base_url"}:
                 continue
             meta.setdefault(key, value)
-        break
+        return True
+
+    return False
 
 
 def _matches_model(item: dict, model: Model) -> bool:

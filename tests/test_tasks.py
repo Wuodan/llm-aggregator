@@ -23,6 +23,7 @@ class FakeStore:
         self.applied = 0
         self.requeued = 0
         self.cleared = 0
+        self.last_requeue: list[Model] = []
 
     async def update_models(self, models):
         self.updated += 1
@@ -39,6 +40,7 @@ class FakeStore:
 
     async def requeue_models(self, models):
         self.requeued += 1
+        self.last_requeue = list(models)
         self.queue.extend(models)
 
     async def clear(self):
@@ -74,13 +76,13 @@ def test_background_tasks_manager_enrichment_flow(monkeypatch):
             enrich_attempts["count"] += 1
             if enrich_attempts["count"] == 1:
                 requeued.set()
-                return []
+                return [], batch
             enriched = []
             for m in batch:
                 m.meta["summary"] = f"{m.id}-summary"
                 enriched.append(m)
             applied.set()
-            return enriched
+            return enriched, []
 
         async def fast_sleep_until_stop(stop_event, timeout):
             await asyncio.sleep(0)
@@ -106,6 +108,56 @@ def test_background_tasks_manager_enrichment_flow(monkeypatch):
         assert store.cleared >= 1
 
         await manager.stop()
+
+    asyncio.run(_run())
+
+
+def test_background_tasks_manager_requeues_failed_models(monkeypatch):
+    async def _run():
+        store = FakeStore()
+
+        class DummySettings:
+            fetch_models_interval = 0.05
+            brain = SimpleNamespace(max_batch_size=3)
+            time = SimpleNamespace(enrich_idle_sleep=0)
+
+        models = [_model(1), _model(2)]
+        gather_calls = {"count": 0}
+
+        async def fake_gather_models():
+            gather_calls["count"] += 1
+            return list(models) if gather_calls["count"] == 1 else []
+
+        async def fake_enrich_batch(batch):
+            enriched = [batch[0]]
+            failed = batch[1:]
+            return enriched, failed
+
+        async def spy_requeue(models):
+            await FakeStore.requeue_models(store, models)
+
+        async def fast_sleep_until_stop(stop_event, timeout):
+            await asyncio.sleep(0)
+
+        # Use a local MonkeyPatch to avoid interactions with autouse fixtures.
+        patcher = monkeypatch.context()
+        with patcher as mp:
+            store.requeue_models = spy_requeue
+            mp.setattr(tasks_module, "get_settings", lambda: DummySettings())
+            mp.setattr(tasks_module, "gather_models", fake_gather_models)
+            mp.setattr(tasks_module, "enrich_batch", fake_enrich_batch)
+            mp.setattr(tasks_module, "_sleep_until_stop", fast_sleep_until_stop)
+            mp.setattr(tasks_module, "time", SimpleNamespace(sleep=lambda _seconds: None))
+
+            manager = tasks_module.BackgroundTasksManager(store)
+            await manager.start()
+
+            await asyncio.sleep(0.3)
+
+            assert store.applied >= 1
+            assert [m.id for m in store.last_requeue] == ["model-2"]
+
+            await manager.stop()
 
     asyncio.run(_run())
 

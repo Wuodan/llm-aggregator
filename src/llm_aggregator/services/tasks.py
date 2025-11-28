@@ -74,13 +74,15 @@ class BackgroundTasksManager:
 
                         # Try enrichment; on any failure, requeue the batch.
                         try:
-                            enriched: List[Model] = await enrich_batch(batch)
+                            enriched, failed = await enrich_batch(batch)
                             if enriched:
                                 await self._store.apply_enrichment(enriched)
-                            else:
-                                # brain returned nothing -> requeue to retry later
-                                await self._store.requeue_models(batch)
-                                time.sleep(5)
+
+                            if failed:
+                                await self._store.requeue_models(failed)
+                                if not enriched:
+                                    # brain returned nothing useful -> pause before retry
+                                    time.sleep(5)
                         except Exception as e:
                             logging.error("Brain enrichment failed: %r", e)
                             await self._store.requeue_models(batch)
