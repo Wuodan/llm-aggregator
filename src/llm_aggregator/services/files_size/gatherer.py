@@ -32,6 +32,7 @@ async def gather_files_size(model: Model) -> int | None:
             return None
         cmd = [str(script_path), cfg.base_path, model.key.id]
 
+        proc: asyncio.subprocess.Process | None = None
         try:
             proc = await asyncio.create_subprocess_exec(
                 *cmd,
@@ -46,38 +47,51 @@ async def gather_files_size(model: Model) -> int | None:
             return None
 
         try:
-            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
-        except asyncio.TimeoutError:
-            proc.kill()
-            logging.error("Custom files_size_gatherer timed out after %ss: %s", timeout, cmd)
-            return None
+            try:
+                stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
+            except asyncio.TimeoutError:
+                proc.kill()
+                try:
+                    await proc.wait()
+                except Exception as wait_exc:  # pragma: no cover - defensive cleanup
+                    logging.debug("Failed waiting for killed files_size_gatherer: %r", wait_exc)
+                logging.error("Custom files_size_gatherer timed out after %ss: %s", timeout, cmd)
+                return None
 
-        if proc.returncode != 0:
-            logging.error(
-                "Custom files_size_gatherer exited with %s: %s (stderr %.200r)",
-                proc.returncode,
-                cmd,
-                stderr.decode(errors="replace"),
-            )
-            return None
+            if proc.returncode != 0:
+                logging.error(
+                    "Custom files_size_gatherer exited with %s: %s (stderr %.200r)",
+                    proc.returncode,
+                    cmd,
+                    stderr.decode(errors="replace"),
+                )
+                return None
 
-        try:
-            size_str = stdout.decode().strip()
-        except Exception:
-            logging.error("Custom files_size_gatherer produced non-text stdout")
-            return None
+            try:
+                size_str = stdout.decode().strip()
+            except Exception:
+                logging.error("Custom files_size_gatherer produced non-text stdout")
+                return None
 
-        try:
-            size = int(size_str)
-        except ValueError:
-            logging.error("Custom files_size_gatherer output is not an integer: %r", size_str)
-            return None
+            try:
+                size = int(size_str)
+            except ValueError:
+                logging.error("Custom files_size_gatherer output is not an integer: %r", size_str)
+                return None
 
-        if size < 0:
-            logging.error("Custom files_size_gatherer returned negative size: %s", size)
-            return None
+            if size < 0:
+                logging.error("Custom files_size_gatherer returned negative size: %s", size)
+                return None
 
-        return size
+            return size
+        finally:
+            if proc:
+                try:
+                    transport = getattr(proc, "_transport", None)
+                    if transport is not None:
+                        transport.close()
+                except Exception as transport_exc:  # pragma: no cover - defensive cleanup
+                    logging.debug("Failed closing files_size_gatherer transport: %r", transport_exc)
     except Exception as exc:
         logging.error(
             "files_size_gatherer failed for %s: %r",
